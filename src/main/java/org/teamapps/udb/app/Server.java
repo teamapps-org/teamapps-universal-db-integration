@@ -33,6 +33,7 @@ public class Server {
 	private final File path;
 	private final SchemaInfoProvider schema;
 	private final WebServer webServer;
+	private UniversalDB database;
 
 	public Server(File path, SchemaInfoProvider schema) {
 		dbDir = new File(path, "database");
@@ -51,8 +52,12 @@ public class Server {
 	}
 
 	public void startServer(int port, Supplier<Component> applicationSupplier) throws Exception {
-		UniversalDB.createStandalone(new File(path, "database"), schema);
+		database = UniversalDB.createStandalone(new File(path, "database"), schema);
 		webServer.setPort(port);
 		webServer.startServer(applicationSupplier);
+	}
+
+	public UniversalDB getDatabase() {
+		return database;
 	}
 }

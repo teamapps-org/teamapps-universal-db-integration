@@ -4,7 +4,7 @@
 The fastest way to integrate the ultra fast UniversalDB into a TeamApps project.
 
 * Base requirement is a UniversalDB database model
-* Auto create from table models, tables, infinite item views and models
+* Auto create table models, tables, infinite item views and models
 * Auto create full text search fields directly connected to the views
 * Auto create time line views, map views with geo filtering
 * Auto create form logic, ...
