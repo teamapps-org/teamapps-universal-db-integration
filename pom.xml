@@ -34,7 +34,7 @@
         <slf4j-version>1.7.25</slf4j-version>
         <junit.version>4.13</junit.version>
         <teamapps-version>0.9.64</teamapps-version>
-        <universal-db-version>0.4.7-SNAPSHOT</universal-db-version>
+        <universal-db-version>0.4.7</universal-db-version>
     </properties>
 
     <distributionManagement>
@@ -66,13 +66,6 @@
             <scope>provided</scope>
         </dependency>
 
-
-        <dependency>
-            <groupId>org.teamapps</groupId>
-            <artifactId>teamapps-application-management</artifactId>
-            <version>${teamapps-version}</version>
-            <scope>provided</scope>
-        </dependency>
 
 
         <dependency>

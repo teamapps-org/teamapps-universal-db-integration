@@ -16,12 +16,27 @@ Current UniversalDB version: [![Maven Central](https://maven-badges.herokuapp.co
 <dependency>
   <groupId>org.teamapps</groupId>
   <artifactId>teamapps-universal-db-integration</artifactId>
-  <version>0.2</version>
+  <version>0.3</version>
+</dependency>
+```
+
+### Required minimum TeamApps versions
+
+```xml
+<dependency>
+    <groupId>org.teamapps</groupId>
+    <artifactId>universal-db</artifactId>
+    <version>0.4.7</version>
+</dependency>
+
+<dependency>
+    <groupId>org.teamapps</groupId>
+    <artifactId>teamapps-server-jetty-embedded</artifactId>
+    <version>0.9.64</version>
 </dependency>
 ```
 
 
-
 ## License
 
-The UniversalDB maven plugin is released under version 2.0 of the [Apache License](https://www.apache.org/licenses/LICENSE-2.0).
+The TeamApps UniversalDB Integration is released under version 2.0 of the [Apache License](https://www.apache.org/licenses/LICENSE-2.0).

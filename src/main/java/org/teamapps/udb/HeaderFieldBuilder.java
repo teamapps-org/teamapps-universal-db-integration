@@ -55,7 +55,8 @@ public class HeaderFieldBuilder<ENTITY extends Entity<ENTITY>> extends AbstractB
 	}
 
 	public void setHeaderTitleHandler(View view, String viewTitle) {
-		getModelBuilderFactory().getRecordCount().onChanged().addListener(count -> view.getPanel().setTitle(viewTitle + " (" + count + ")"));
+		view.getPanel().setTitle(viewTitle + " (" + getModelBuilderFactory().getCountAsString(getModelBuilderFactory().getRecordCount().get()) + ")");
+		getModelBuilderFactory().getRecordCount().onChanged().addListener(count -> view.getPanel().setTitle(viewTitle + " (" + getModelBuilderFactory().getCountAsString(count) + ")"));
 	}
 
 }

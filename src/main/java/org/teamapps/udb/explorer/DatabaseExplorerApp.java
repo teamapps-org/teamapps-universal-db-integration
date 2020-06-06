@@ -3,11 +3,13 @@ package org.teamapps.udb.explorer;
 import org.apache.commons.collections4.map.HashedMap;
 import org.teamapps.icon.material.MaterialIcon;
 import org.teamapps.udb.ModelBuilderFactory;
+import org.teamapps.udb.form.FormBuilder;
 import org.teamapps.udb.grouping.GroupingView;
 import org.teamapps.universaldb.UniversalDB;
 import org.teamapps.universaldb.index.*;
 import org.teamapps.universaldb.index.reference.multi.MultiReferenceIndex;
 import org.teamapps.universaldb.index.reference.single.SingleReferenceIndex;
+import org.teamapps.universaldb.pojo.AbstractUdbEntity;
 import org.teamapps.universaldb.pojo.AbstractUdbQuery;
 import org.teamapps.ux.application.ResponsiveApplication;
 import org.teamapps.ux.application.layout.StandardLayout;
@@ -23,32 +25,39 @@ import org.teamapps.ux.component.charting.tree.TreeGraph;
 import org.teamapps.ux.component.charting.tree.TreeGraphNode;
 import org.teamapps.ux.component.template.BaseTemplate;
 import org.teamapps.ux.component.timegraph.TimeGraph;
+import org.teamapps.ux.component.toolbar.ToolbarButton;
+import org.teamapps.ux.component.toolbar.ToolbarButtonGroup;
 import org.teamapps.ux.component.tree.Tree;
 import org.teamapps.ux.component.tree.TreeNodeInfo;
 import org.teamapps.ux.model.ListTreeModel;
+import org.teamapps.ux.session.SessionContext;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class DatabaseExplorerApp implements Supplier<Component> {
+public class DatabaseExplorerApp {
 
 	private final UniversalDB universalDB;
 	private final ResponsiveApplication application;
 	private final SchemaIndex schemaIndex;
-	private View leftView;
-	private View topView;
-	private View centerView;
-	private View rightView;
-	private View leftBottomView;
+
+	private Perspective forceLayoutPerspective;
+	private Perspective treeGraphPerspective;
+
+	private Map<Node, Perspective> perspectiveByNode = new HashedMap<>();
 
 	public DatabaseExplorerApp(UniversalDB universalDB) {
 		this.universalDB = universalDB;
 		application = ResponsiveApplication.createApplication();
 		schemaIndex = universalDB.getSchemaIndex();
 		createUI();
+	}
+
+	public ResponsiveApplication getApplication() {
+		return application;
 	}
 
 	private void createUI() {
@@ -68,27 +77,23 @@ public class DatabaseExplorerApp implements Supplier<Component> {
 			}
 		}
 
-		Perspective perspective = application.addPerspective(Perspective.createPerspective());
+		View applicationView = View.createView(StandardLayout.LEFT, MaterialIcon.VIEW_CAROUSEL, "Database", null);
+		application.addApplicationView(applicationView);
 
-		leftView = perspective.addView(View.createView(StandardLayout.LEFT, MaterialIcon.VIEW_CAROUSEL, "Database", null));
-		leftBottomView = perspective.addView(View.createView(StandardLayout.LEFT_BOTTOM, MaterialIcon.VIEW_CAROUSEL, "Grouping", null));
-		topView = perspective.addView(View.createView(StandardLayout.TOP, MaterialIcon.VIEW_CAROUSEL, "Database", null));
-		centerView = perspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, "Database", null));
-		rightView = perspective.addView(View.createView(StandardLayout.RIGHT, MaterialIcon.VIEW_CAROUSEL, "Database", null));
+		forceLayoutPerspective = application.addPerspective(Perspective.createPerspective());
+		forceLayoutPerspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, "Entities", createForceLayoutGraph(schemaIndex)));
 
-		topView.setVisible(false);
-		rightView.setVisible(false);
-		leftBottomView.setVisible(false);
+		treeGraphPerspective = application.addPerspective(Perspective.createPerspective());
+		treeGraphPerspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, "Database", createTreeGraph(schemaIndex)));
 
-		centerView.setComponent(createForceLayoutGraph(schemaIndex));
-
-		application.showPerspective(perspective);
+		application.showPerspective(forceLayoutPerspective);
+		NumberFormat numberFormat = NumberFormat.getInstance(SessionContext.current().getLocale());
 
 		Tree<Node> tree = new Tree<>(new ListTreeModel<>(nodes));
-		tree.setPropertyExtractor(Node.createPropertyExtractor());
+		tree.setPropertyExtractor(Node.createPropertyExtractor(numberFormat));
 		tree.setEntryTemplate(BaseTemplate.LIST_ITEM_MEDIUM_ICON_TWO_LINES);
 		tree.setShowExpanders(true);
-		tree.setPropertyExtractor(Node.createPropertyExtractor());
+		tree.setPropertyExtractor(Node.createPropertyExtractor(numberFormat));
 		tree.setTreeNodeInfoExtractor(node -> new TreeNodeInfo() {
 			@Override
 			public Object getParent() {
@@ -110,51 +115,69 @@ public class DatabaseExplorerApp implements Supplier<Component> {
 			}
 		});
 
-		tree.onNodeSelected.addListener(node -> {
-			switch (node.getType()) {
-				case SCHEMA:
-					showTreeGraph();
-					break;
-				case DATABASE:
-					showForceLayoutGraph();
-					break;
-				case TABLE:
-					createTableViewer(node.getTableIndex());
-					break;
-				case COLUMN:
-					break;
-			}
-		});
+		ToolbarButtonGroup group = application.addApplicationButtonGroup(new ToolbarButtonGroup());
+		group.addButton(ToolbarButton.create(MaterialIcon.CHROME_READER_MODE, "Schema overview", "Display overview of schema")).onClick.addListener(this::showTreeGraph);
+		group.addButton(ToolbarButton.create(MaterialIcon.BLUR_CIRCULAR, "Entity view", "Display entities of schema")).onClick.addListener(this::showForceLayoutGraph);
 
-		leftView.setComponent(tree);
+		tree.onNodeSelected.addListener(this::handleNodeSelection);
+
+		applicationView.setComponent(tree);
+	}
+
+	private void handleNodeSelection(Node node) {
+		switch (node.getType()) {
+			case SCHEMA:
+				showTreeGraph();
+				break;
+			case DATABASE:
+				showForceLayoutGraph();
+				break;
+			case TABLE:
+				createTableViewer(node);
+				break;
+			case COLUMN:
+				break;
+		}
 	}
 
 	private void showTreeGraph() {
-		Component treeGraph = createTreeGraph(schemaIndex);
-		centerView.setComponent(treeGraph);
-		topView.setVisible(false);
-		rightView.setVisible(false);
-		leftBottomView.setVisible(false);
+		application.showPerspective(treeGraphPerspective);
 	}
 
 	private void showForceLayoutGraph() {
-		Component graph = createForceLayoutGraph(schemaIndex);
-		centerView.setComponent(graph);
-		topView.setVisible(false);
-		rightView.setVisible(false);
-		leftBottomView.setVisible(false);
+		application.showPerspective(forceLayoutPerspective);
 	}
 
-	private void createTableViewer(TableIndex tableIndex) {
+	private void createTableViewer(Node node) {
+		TableIndex tableIndex = node.getTableIndex();
+		Perspective perspective = perspectiveByNode.get(node);
+		if (perspective != null) {
+			application.showPerspective(perspective);
+			return;
+		}
+
+		perspective = application.addPerspective(Perspective.createPerspective());
+		perspectiveByNode.put(node, perspective);
+		View leftBottomView = perspective.addView(View.createView(StandardLayout.LEFT_BOTTOM, MaterialIcon.VIEW_CAROUSEL, "Grouping", null));
+		View topView = perspective.addView(View.createView(StandardLayout.TOP, MaterialIcon.VIEW_CAROUSEL, node.getName(), null));
+		View centerView = perspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, node.getName(), null));
+		View rightView = perspective.addView(View.createView(StandardLayout.CENTER_BOTTOM, MaterialIcon.VIEW_CAROUSEL, node.getName(), null));
+
+
 		String pojoNamespace = tableIndex.getDatabaseIndex().getSchemaIndex().getSchema().getPojoNamespace();
-		String path = pojoNamespace + "." + tableIndex.getDatabaseIndex().getName() + ".Udb" + getFirstUpper(tableIndex.getName());
+		String path = pojoNamespace + "." + tableIndex.getDatabaseIndex().getName() + ".Udb" + Util.getFirstUpper(tableIndex.getName());
 		ModelBuilderFactory factory = new ModelBuilderFactory(() -> createQuery(path));
 		for (ColumnIndex columnIndex : tableIndex.getColumnIndices()) {
-			factory.addFieldInfo(columnIndex.getName(), getFirstUpper(columnIndex.getName()), MaterialIcon.LABEL_OUTLINE);
+			factory.addFieldInfo(columnIndex.getName(), Util.createTitleFromCamelCase(columnIndex.getName()), MaterialIcon.LABEL_OUTLINE);
 		}
 
 		String[] fieldNames = tableIndex.getColumnIndices().stream().map(column -> column.getName()).collect(Collectors.toList()).toArray(new String[0]);
-		factory.createTableBuilder().createAndAttachToViewWithHeaderField(centerView, tableIndex.getName(), fieldNames);
+		factory.createTableBuilder().createAndAttachToViewWithHeaderField(centerView, node.getName(), fieldNames);
+
+		FormBuilder formBuilder = factory.createFormBuilder(createEntity(path));
+		formBuilder.addFields(fieldNames);
+		formBuilder.createAndAttachToViewWithToolbarButtons(rightView);
+		rightView.setVisible(true);
 
 		TimeGraph timeGraph = factory.createTimeGraphBuilder().build();
 		topView.setComponent(timeGraph);
@@ -163,6 +186,7 @@ public class DatabaseExplorerApp implements Supplier<Component> {
 		GroupingView groupingView = factory.createGroupingView(fieldNames);
 		groupingView.createAndAttachToViewWithHeaderField(leftBottomView);
 		leftBottomView.setVisible(true);
+		application.showPerspective(perspective);
 	}
 
 	private AbstractUdbQuery createQuery(String path) {
@@ -174,15 +198,20 @@ public class DatabaseExplorerApp implements Supplier<Component> {
 		return null;
 	}
 
-	@Override
-	public Component get() {
-		return application.getUi();
+	private AbstractUdbEntity createEntity(String path) {
+		try {
+			return (AbstractUdbEntity) Class.forName(path).getDeclaredConstructor().newInstance();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	private ForceLayoutGraph<Node> createForceLayoutGraph(SchemaIndex schemaIndex) {
 		ForceLayoutGraph<Node> graph = new ForceLayoutGraph<>();
 		Map<String, ForceLayoutNode<Node>> graphNodeById = new HashedMap<>();
-		graph.setPropertyExtractor(Node.createPropertyExtractor());
+		NumberFormat numberFormat = NumberFormat.getInstance(SessionContext.current().getLocale());
+		graph.setPropertyExtractor(Node.createPropertyExtractor(numberFormat));
 
 		List<ForceLayoutNode<Node>> nodes = new ArrayList<>();
 		List<ForceLayoutLink> links = new ArrayList<>();
@@ -238,6 +267,11 @@ public class DatabaseExplorerApp implements Supplier<Component> {
 				});
 
 		graph.addNodesAndLinks(nodes, links);
+
+		graph.onNodeClicked.addListener(graphNode -> {
+			Node node = graphNode.getRecord();
+			handleNodeSelection(node);
+		});
 		return graph;
 	}
 
@@ -265,22 +299,12 @@ public class DatabaseExplorerApp implements Supplier<Component> {
 		links.add(new ForceLayoutLink(source, target));
 	}
 
-	private String getFirstUpper(String s) {
-		return s.substring(0, 1).toUpperCase() + s.substring(1);
-	}
-
-	private String createTitle(String s) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < s.length(); i++) {
-
-		}
-		return sb.toString();
-	}
 
 	private Component createTreeGraph(SchemaIndex schemaIndex) {
 		TreeGraph<Node> graph = new TreeGraph<>();
 		graph.setCompact(true);
-		graph.setPropertyExtractor(Node.createPropertyExtractor());
+		NumberFormat numberFormat = NumberFormat.getInstance(SessionContext.current().getLocale());
+		graph.setPropertyExtractor(Node.createPropertyExtractor(numberFormat));
 
 		List<TreeGraphNode<Node>> nodes = new ArrayList<>();
 		Node schemaNode = new Node("Schema", NodeType.SCHEMA, schemaIndex);
@@ -306,6 +330,11 @@ public class DatabaseExplorerApp implements Supplier<Component> {
 		}
 
 		graph.setNodes(nodes);
+
+		graph.onNodeClicked.addListener(graphNode -> {
+			Node node = graphNode.getRecord();
+			handleNodeSelection(node);
+		});
 
 		return graph;
 	}

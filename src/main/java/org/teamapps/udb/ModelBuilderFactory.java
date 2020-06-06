@@ -36,7 +36,9 @@ import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.universaldb.pojo.Query;
 import org.teamapps.universaldb.query.Filter;
 import org.teamapps.universaldb.record.EntityBuilder;
+import org.teamapps.ux.session.SessionContext;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -76,6 +78,9 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 	private String fullTextQuery;
 
 	private List<FieldInfo> fieldInfos = new ArrayList<>();
+
+	private NumberFormat numberFormat = NumberFormat.getInstance(SessionContext.current().getLocale());
+
 
 	public ModelBuilderFactory(Supplier<Query<ENTITY>> querySupplier) {
 		AbstractUdbQuery<ENTITY> udbQuery = (AbstractUdbQuery<ENTITY>) querySupplier.get();
@@ -263,6 +268,10 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 
 	public EntityBuilder<ENTITY> getEntityBuilder() {
 		return entityBuilder;
+	}
+
+	public String getCountAsString(long count) {
+		return numberFormat.format(count);
 	}
 
 	protected org.teamapps.universaldb.query.Sorting convertSorting(Sorting sorting) {

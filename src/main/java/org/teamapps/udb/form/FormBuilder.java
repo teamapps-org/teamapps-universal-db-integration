@@ -351,6 +351,9 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 	}
 
 	private <VALUE> void addFormField(FormField<ENTITY, VALUE> formField) {
+		if (formField.getField() == null) {
+			return;
+		}
 		formFields.add(formField);
 		formFieldByName.put(formField.getName(), formField);
 		formLayout.addLabelAndField(formField.getIcon(), formField.getTitle(), formField.getName(), formField.getField());

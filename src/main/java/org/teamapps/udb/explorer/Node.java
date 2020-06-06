@@ -4,8 +4,10 @@ package org.teamapps.udb.explorer;
 import org.teamapps.common.format.Color;
 import org.teamapps.data.extract.PropertyExtractor;
 import org.teamapps.universaldb.index.*;
+import org.teamapps.universaldb.schema.TableOption;
 import org.teamapps.ux.component.template.BaseTemplate;
 
+import java.text.NumberFormat;
 import java.util.stream.Collectors;
 
 public class Node {
@@ -16,7 +18,7 @@ public class Node {
 	private final Node parent;
 
 	public Node(String name, NodeType type, Object data, Node parent) {
-		this.name = name;
+		this.name = Util.createTitleFromCamelCase(name);
 		this.type = type;
 		this.data = data;
 		this.parent = parent;
@@ -24,7 +26,7 @@ public class Node {
 
 	public Node(String name, NodeType type, Object data) {
 		this.parent = null;
-		this.name = name;
+		this.name = Util.createTitleFromCamelCase(name);
 		this.type = type;
 		this.data = data;
 	}
@@ -77,21 +79,21 @@ public class Node {
 			case DATABASE:
 				return getDatabaseIndex().getFQN();
 			case TABLE:
-				return getTableIndex().getTableConfig().getTableOptions().stream().map(Enum::name).collect(Collectors.joining(", "));
+				return getTableIndex().getTableConfig().getTableOptions().stream().map(option -> getTableOptionTitle(option)).collect(Collectors.joining(", "));
 			case COLUMN:
 				return getColumnIndex().getColumnType().name();
 		}
 		return null;
 	}
 
-	public String getBadge() {
+	public String getBadge(NumberFormat numberFormat) {
 		switch (type) {
 			case SCHEMA:
 				return getSchemaIndex().getDatabases().size() + " DBs";
 			case DATABASE:
 				return getDatabaseIndex().getTables().size() + " TBLs";
 			case TABLE:
-				return "" + getTableIndex().getCount();
+				return numberFormat.format(getTableIndex().getCount());
 			case COLUMN:
 
 		}
@@ -126,8 +128,26 @@ public class Node {
 		return null;
 	}
 
+	private static String getTableOptionTitle(TableOption option) {
+		switch (option) {
+			case CHECKPOINTS:
+				return "Checkpoints";
+			case VERSIONING:
+				return "Versions";
+			case HIERARCHY:
+				return "Hierarchy";
+			case TRACK_CREATION:
+				return "Creations";
+			case TRACK_MODIFICATION:
+				return "Modifications";
+			case KEEP_DELETED:
+				return "Deletions";
+		}
+		return null;
+	}
 
-	public static PropertyExtractor<Node> createPropertyExtractor() {
+
+	public static PropertyExtractor<Node> createPropertyExtractor(NumberFormat numberFormat) {
 		return (node, propertyName) -> {
 			switch (propertyName) {
 				case BaseTemplate.PROPERTY_ICON:
@@ -137,7 +157,7 @@ public class Node {
 				case BaseTemplate.PROPERTY_DESCRIPTION:
 					return node.getDescription();
 				case BaseTemplate.PROPERTY_BADGE:
-					return node.getBadge();
+					return node.getBadge(numberFormat);
 			}
 			return null;
 		};

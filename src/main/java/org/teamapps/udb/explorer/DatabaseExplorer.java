@@ -14,7 +14,6 @@ public class DatabaseExplorer {
 		this.path = path;
 		UniversalDB database = UniversalDB.createStandalone(new File(path, "database"), schema);
 		WebServer webServer = new WebServer();
-
-		webServer.startServer(() -> new DatabaseExplorerApp(database).get());
+		webServer.startServer(() -> new DatabaseExplorerApp(database).getApplication().getUi());
 	}
 }
