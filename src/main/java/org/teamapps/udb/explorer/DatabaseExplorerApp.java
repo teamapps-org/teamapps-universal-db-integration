@@ -69,8 +69,12 @@ public class DatabaseExplorerApp {
 	private Map<Node, Perspective> perspectiveByNode = new HashedMap<>();
 
 	public DatabaseExplorerApp(UniversalDB universalDB) {
+		this(universalDB, ResponsiveApplication.createApplication());
+	}
+
+	public DatabaseExplorerApp(UniversalDB universalDB, ResponsiveApplication application) {
 		this.universalDB = universalDB;
-		application = ResponsiveApplication.createApplication();
+		this.application = application;
 		schemaIndex = universalDB.getSchemaIndex();
 		createUI();
 	}
@@ -100,7 +104,8 @@ public class DatabaseExplorerApp {
 		application.addApplicationView(applicationView);
 
 		forceLayoutPerspective = application.addPerspective(Perspective.createPerspective());
-		forceLayoutPerspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, "Entities", createForceLayoutGraph(schemaIndex)));
+		View forceLayoutView = View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, "Entities", createForceLayoutGraph(schemaIndex));
+		forceLayoutPerspective.addView(forceLayoutView);
 
 		treeGraphPerspective = application.addPerspective(Perspective.createPerspective());
 		treeGraphPerspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, "Database", createTreeGraph(schemaIndex)));
