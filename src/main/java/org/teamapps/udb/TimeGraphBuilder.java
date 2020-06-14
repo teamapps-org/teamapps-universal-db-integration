@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,10 +20,14 @@
 package org.teamapps.udb;
 
 import org.teamapps.common.format.Color;
+import org.teamapps.event.Event;
 import org.teamapps.udb.filter.TimeIntervalFilter;
 import org.teamapps.universaldb.index.ColumnType;
 import org.teamapps.universaldb.pojo.Entity;
-import org.teamapps.universaldb.schema.Table;
+import org.teamapps.ux.application.view.View;
+import org.teamapps.ux.component.field.combobox.ComboBox;
+import org.teamapps.ux.component.table.Table;
+import org.teamapps.ux.component.template.BaseTemplate;
 import org.teamapps.ux.component.timegraph.*;
 
 import java.util.ArrayList;
@@ -37,48 +41,24 @@ public class TimeGraphBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBui
 	public static final String GROUP_FILTER_SERIES = "groupData";
 	public static final String FULL_TEXT_DATA_SERIES = "fullTextData";
 
+	public Event<String> onQueryFieldChanged = new Event<>();
 
 	private ScaleType scaleType = ScaleType.LOG10;
-	private LineChartLine chartLineBase;
-	private LineChartLine chartLineGroupingFilter;
-	private LineChartLine chartLineGeoFilter;
-	private LineChartLine chartLineFullTextFilter;
-
-	private List<FieldInfo> fieldInfos = new ArrayList<>();
+	private LineChartLine baseLine;
+	private LineChartLine groupingLine;
+	private LineChartLine geoFilterLine;
+	private LineChartLine fullTextFilterLine;
 
 	protected TimeGraphBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory) {
 		super(modelBuilderFactory);
 		setChartLines();
 	}
 
-	public TimeGraphBuilder<ENTITY> setFieldName(String fieldName) {
-		fieldInfos.clear();
-		addFieldInfo(new FieldInfo(fieldName, fieldName));
-		return this;
-	}
-
-	public TimeGraphBuilder<ENTITY> addFieldInfo(FieldInfo fieldInfo) {
-		fieldInfos.add(fieldInfo);
-		return this;
-	}
-
-	private String getFirstFieldName() {
-		if (!fieldInfos.isEmpty()) {
-			return fieldInfos.get(0).getName();
-		} else {
-			if (getModelBuilderFactory().getTableIndex().getColumnIndex(Table.FIELD_CREATION_DATE) != null) {
-				return Table.FIELD_CREATION_DATE;
-			} else {
-				return getDateFields().get(0);
-			}
-		}
-	}
-
 	private void setChartLines() {
-		chartLineBase = createChartLine(BASE_DATA_SERIES, Color.MATERIAL_BLUE_700);
-		chartLineGeoFilter = createChartLine(GEO_FILTER_SERIES, Color.MATERIAL_RED_700);
-		chartLineGroupingFilter = createChartLine(GROUP_FILTER_SERIES, Color.MATERIAL_GREEN_800);
-		chartLineFullTextFilter = createChartLine(FULL_TEXT_DATA_SERIES, Color.MATERIAL_AMBER_700);
+		baseLine = createChartLine(BASE_DATA_SERIES, Color.MATERIAL_BLUE_700);
+		geoFilterLine = createChartLine(GEO_FILTER_SERIES, Color.MATERIAL_RED_700);
+		groupingLine = createChartLine(GROUP_FILTER_SERIES, Color.MATERIAL_GREEN_800);
+		fullTextFilterLine = createChartLine(FULL_TEXT_DATA_SERIES, Color.MATERIAL_AMBER_700);
 	}
 
 	public LineChartLine createChartLine(String lineName, Color color) {
@@ -91,14 +71,50 @@ public class TimeGraphBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBui
 	}
 
 	public TimeGraph build() {
-		TimeGraphModelBuilder<ENTITY> modelBuilder = new TimeGraphModelBuilder<>(getModelBuilderFactory());
-		String fieldName = getFirstFieldName();
-		TimeGraphModel timeGraphModel = modelBuilder.build(fieldName);
+		List<Field<ENTITY, ?>> fields = getFields();
+		if (fields.isEmpty()) {
+			fields = getModelBuilderFactory().getFields();
+		}
+		TimeGraphModelBuilder<ENTITY> timeGraphModelBuilder = new TimeGraphModelBuilder<>(getModelBuilderFactory(), fields);
+		TimeGraphModel timeGraphModel = timeGraphModelBuilder.build();
 		TimeGraph timeGraph = new TimeGraph(timeGraphModel);
 		updateLines(timeGraph);
 		getModelBuilderFactory().onGroupingDataChanged.addListener(() -> updateLines(timeGraph));
 		getModelBuilderFactory().onFinalDataChanged.addListener(() -> updateLines(timeGraph));
-		timeGraph.onIntervalSelected.addListener(interval -> getModelBuilderFactory().onTimeIntervalFilterChanged.fire(interval == null ? null :new TimeIntervalFilter(fieldName, interval.getMin(), interval.getMax())));
+		timeGraph.onIntervalSelected.addListener(interval -> getModelBuilderFactory().onTimeIntervalFilterChanged.fire(interval == null ? null : new TimeIntervalFilter(timeGraphModelBuilder.getQueryFieldName(), interval.getMin(), interval.getMax())));
+		onQueryFieldChanged.addListener(fieldName -> timeGraphModelBuilder.setQueryFieldName(fieldName));
+		return timeGraph;
+	}
+
+	public TimeGraph createAndAttachToViewWithHeaderField(View view) {
+		TimeGraph timeGraph = build();
+		view.setComponent(timeGraph);
+
+		List<Field<ENTITY, ?>> fields = getFields();
+		if (fields.isEmpty()) {
+			fields = getModelBuilderFactory().getFields();
+		}
+		List<Field<ENTITY, ?>> dateFields = fields.stream().filter(field -> TimeGraphModelBuilder.isDateField(field)).collect(Collectors.toList());
+
+		if (dateFields.size() > 1) {
+			ComboBox<Field<ENTITY, ?>> fieldSelectorComboBox = new ComboBox<>(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
+			fieldSelectorComboBox.setValue(dateFields.get(0));
+			fieldSelectorComboBox.setStaticData(dateFields);
+			fieldSelectorComboBox.setPropertyExtractor((field, propertyName) -> {
+				switch (propertyName) {
+					case BaseTemplate.PROPERTY_ICON:
+						return field.getIcon();
+					case BaseTemplate.PROPERTY_CAPTION:
+						return field.getTitle();
+					default:
+						return null;
+				}
+			});
+			fieldSelectorComboBox.onValueChanged.addListener(field -> {
+				onQueryFieldChanged.fire(field.getName());
+			});
+			view.getPanel().setRightHeaderField(fieldSelectorComboBox);
+		}
 		return timeGraph;
 	}
 
@@ -110,35 +126,23 @@ public class TimeGraphBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBui
 		lineChartDataDisplayGroup.setYAxisColor(Color.BLACK);
 
 		List<LineChartLine> lines = new ArrayList<>();
-		lines.add(chartLineBase);
+		lines.add(baseLine);
 
-		lineChartDataDisplayGroup.addDataDisplay(chartLineBase);
+		lineChartDataDisplayGroup.addDataDisplay(baseLine);
 
 		if (getModelBuilderFactory().getGeoFilter() != null) {
-			lineChartDataDisplayGroup.addDataDisplay(chartLineGeoFilter);
-			lines.add(chartLineGeoFilter);
+			lineChartDataDisplayGroup.addDataDisplay(geoFilterLine);
+			lines.add(geoFilterLine);
 		}
 		if (getModelBuilderFactory().getGroupFilter() != null) {
-			lineChartDataDisplayGroup.addDataDisplay(chartLineGroupingFilter);
-			lines.add(chartLineGroupingFilter);
+			lineChartDataDisplayGroup.addDataDisplay(groupingLine);
+			lines.add(groupingLine);
 		}
 		if (getModelBuilderFactory().getFullTextQuery() != null && !getModelBuilderFactory().getFullTextQuery().isBlank()) {
-			lineChartDataDisplayGroup.addDataDisplay(chartLineFullTextFilter);
-			lines.add(chartLineFullTextFilter);
+			lineChartDataDisplayGroup.addDataDisplay(fullTextFilterLine);
+			lines.add(fullTextFilterLine);
 		}
 		timeGraph.setLines(lines);
-	}
-
-	private List<String> getDateFields() {
-		return getModelBuilderFactory().getTableIndex().getColumnIndices().stream()
-				.filter(column ->
-						column.getColumnType() == ColumnType.TIMESTAMP ||
-								column.getColumnType() == ColumnType.DATE_TIME ||
-								column.getColumnType() == ColumnType.LOCAL_DATE ||
-								column.getColumnType() == ColumnType.DATE
-				)
-				.map(column -> column.getName())
-				.collect(Collectors.toList());
 	}
 
 	public TimeGraphBuilder<ENTITY> setScaleType(boolean logarithmic) {
@@ -146,30 +150,30 @@ public class TimeGraphBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBui
 		return this;
 	}
 
-	public LineChartLine getChartLineBase() {
-		return chartLineBase;
+	public LineChartLine getBaseLine() {
+		return baseLine;
 	}
 
-	public TimeGraphBuilder<ENTITY> setChartLineBase(LineChartLine chartLineBase) {
-		this.chartLineBase = chartLineBase;
+	public TimeGraphBuilder<ENTITY> setBaseLine(LineChartLine baseLine) {
+		this.baseLine = baseLine;
 		return this;
 	}
 
-	public LineChartLine getChartLineGroupingFilter() {
-		return chartLineGroupingFilter;
+	public LineChartLine getGroupingLine() {
+		return groupingLine;
 	}
 
-	public TimeGraphBuilder<ENTITY> setChartLineGroupingFilter(LineChartLine chartLineGroupingFilter) {
-		this.chartLineGroupingFilter = chartLineGroupingFilter;
+	public TimeGraphBuilder<ENTITY> setGroupingLine(LineChartLine groupingLine) {
+		this.groupingLine = groupingLine;
 		return this;
 	}
 
-	public LineChartLine getChartLineFullTextFilter() {
-		return chartLineFullTextFilter;
+	public LineChartLine getFullTextFilterLine() {
+		return fullTextFilterLine;
 	}
 
-	public TimeGraphBuilder<ENTITY> setChartLineFullTextFilter(LineChartLine chartLineFullTextFilter) {
-		this.chartLineFullTextFilter = chartLineFullTextFilter;
+	public TimeGraphBuilder<ENTITY> setFullTextFilterLine(LineChartLine fullTextFilterLine) {
+		this.fullTextFilterLine = fullTextFilterLine;
 		return this;
 	}
 }

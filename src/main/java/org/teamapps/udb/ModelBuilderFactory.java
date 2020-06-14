@@ -25,9 +25,13 @@ import org.teamapps.databinding.ObservableValue;
 import org.teamapps.databinding.TwoWayBindableValue;
 import org.teamapps.event.Event;
 import org.teamapps.icons.api.Icon;
+import org.teamapps.udb.decider.DeciderSet;
+import org.teamapps.udb.explorer.Util;
 import org.teamapps.udb.filter.*;
 import org.teamapps.udb.form.FormBuilder;
 import org.teamapps.udb.grouping.GroupingView;
+import org.teamapps.udb.perspectve.PerspectiveBuilder;
+import org.teamapps.universaldb.index.ColumnIndex;
 import org.teamapps.universaldb.index.IndexType;
 import org.teamapps.universaldb.index.TableIndex;
 import org.teamapps.universaldb.index.numeric.NumericFilter;
@@ -36,6 +40,8 @@ import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.universaldb.pojo.Query;
 import org.teamapps.universaldb.query.Filter;
 import org.teamapps.universaldb.record.EntityBuilder;
+import org.teamapps.universaldb.schema.Column;
+import org.teamapps.universaldb.schema.Table;
 import org.teamapps.ux.session.SessionContext;
 
 import java.text.NumberFormat;
@@ -77,7 +83,7 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 	private Filter groupFilter;
 	private String fullTextQuery;
 
-	private List<FieldInfo> fieldInfos = new ArrayList<>();
+	private List<Field<ENTITY, ?>> fields = new ArrayList<>();
 
 	private NumberFormat numberFormat = NumberFormat.getInstance(SessionContext.current().getLocale());
 
@@ -102,16 +108,36 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		onBaseQueryDataChanged.fire();
 	}
 
-	public void addFieldInfo(String name, String title, Icon icon) {
-		addFieldInfo(new FieldInfo(name, title, icon));
+	public ModelBuilderFactory<ENTITY> addAllEntityFields() {
+		tableIndex.getColumnIndices().forEach(c -> {
+			if (!c.getName().equals(Table.FIELD_DELETED_BY)  && !c.getName().equals(Table.FIELD_DELETION_DATE)) {
+				addFields(c.getName());
+			}
+		});
+		return this;
 	}
 
-	public void addFieldInfo(FieldInfo fieldInfo) {
-		fieldInfos.add(fieldInfo);
+	public ModelBuilderFactory<ENTITY> addFields(String... fieldNames) {
+		for (String fieldName : fieldNames) {
+			Field<ENTITY, Object> field = addField(fieldName, Util.createTitleFromCamelCase(fieldName), null);
+			if (Table.isReservedMetaName(fieldName)) {
+				field.setEditable(false);
+			}
+		}
+		return this;
 	}
 
-	public List<FieldInfo> getFieldInfos() {
-		return fieldInfos;
+	public <VALUE> Field<ENTITY, VALUE> addField(String name, String title, Icon icon) {
+		return addField(new Field<>(name, title, icon, tableIndex.getColumnIndex(name)));
+	}
+
+	public <VALUE> Field<ENTITY, VALUE> addField(Field<ENTITY, VALUE> field) {
+		fields.add(field);
+		return field;
+	}
+
+	public List<Field<ENTITY, ?>> getFields() {
+		return fields;
 	}
 
 	public ENTITY getSelectedRecord() {
@@ -206,6 +232,10 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		return new TimeGraphModelBuilder<>(this);
 	}
 
+	public TimeGraphModelBuilder<ENTITY> createTimeGraphModelBuilder(String... fieldNames) {
+		return new TimeGraphModelBuilder<>(this, fieldNames);
+	}
+
 	public TimeGraphBuilder<ENTITY> createTimeGraphBuilder() {
 		return new TimeGraphBuilder<>(this);
 	}
@@ -214,16 +244,20 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		return new MapModel<>(this);
 	}
 
-	public Map<ENTITY> createMap() {
-		return new Map<>(this);
+	public MapBuilder<ENTITY> createMapBuilder() {
+		return new MapBuilder<>(this);
 	}
 
-	public GroupingView<ENTITY> createGroupingView(String... fieldNames) {
-		return new GroupingView<>(this, fieldNames);
+	public GroupingView<ENTITY> createGroupingView() {
+		return new GroupingView<>(this);
 	}
 
-	public FormBuilder<ENTITY> createFormBuilder(EntityBuilder<ENTITY> entityBuilder) {
-		return new FormBuilder<>(this, entityBuilder);
+	public FormBuilder<ENTITY> createFormBuilder(EntityBuilder<ENTITY> entityBuilder, DeciderSet<ENTITY> deciderSet) {
+		return new FormBuilder<>(this, entityBuilder, deciderSet);
+	}
+
+	public PerspectiveBuilder<ENTITY> createPerspectiveBuilder(EntityBuilder<ENTITY> entityBuilder, DeciderSet<ENTITY> deciderSet) {
+		return new PerspectiveBuilder<>(this, entityBuilder, deciderSet);
 	}
 
 	public AbstractUdbQuery<ENTITY> getBaseQuery() {
@@ -264,6 +298,14 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 
 	public TableIndex getTableIndex() {
 		return tableIndex;
+	}
+
+	public ColumnIndex getIndex(String fieldName) {
+		return tableIndex.getColumnIndex(fieldName);
+	}
+
+	public Column getColumn(ColumnIndex index) {
+		return tableIndex.getDatabaseIndex().getSchemaIndex().getColumn(index);
 	}
 
 	public EntityBuilder<ENTITY> getEntityBuilder() {

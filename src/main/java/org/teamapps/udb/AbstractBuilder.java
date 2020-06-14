@@ -20,12 +20,18 @@
 package org.teamapps.udb;
 
 import org.teamapps.icons.api.Icon;
+import org.teamapps.universaldb.index.ColumnIndex;
 import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.ux.session.SessionContext;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class AbstractBuilder<ENTITY extends Entity<ENTITY>> {
 
 	private final ModelBuilderFactory<ENTITY> modelBuilderFactory;
+	private List<Field<ENTITY, ? extends Object>> fields = new ArrayList<>();
+
 
 	protected AbstractBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory) {
 		this.modelBuilderFactory = modelBuilderFactory;
@@ -43,5 +49,59 @@ public abstract class AbstractBuilder<ENTITY extends Entity<ENTITY>> {
 		return SessionContext.current().getIcon(key);
 	}
 
+	protected <VALUE> void handleNewField(Field<ENTITY, VALUE> field) {
+
+	}
+
+	public List<Field<ENTITY, ? extends Object>> getFields() {
+		return fields;
+	}
+
+	public void addFieldCopies(String... fieldNames) {
+		for (String fieldName : fieldNames) {
+			addFieldCopy(fieldName);
+		}
+	}
+
+	public Field<ENTITY, ?> addFieldCopy(String fieldName) {
+		Field<ENTITY, ?> field = modelBuilderFactory.getFields().stream()
+				.filter(f -> f.getName().equals(fieldName))
+				.findAny()
+				.orElseThrow();
+		Field<ENTITY, ?> newField = field.copy();
+		addField(newField);
+		return newField;
+	}
+
+	public void addFields(Field<ENTITY, ?>... fields) {
+		for (Field<ENTITY, ?> field : fields) {
+			addField(field);
+		}
+	}
+
+	public void addFields(List<Field<ENTITY, ?>> fields) {
+		fields.forEach(f -> addField(f));
+	}
+
+	public <VALUE> Field<ENTITY, VALUE> addField(String fieldName, String title) {
+		return addField(fieldName, title, null);
+	}
+
+	public <VALUE> Field<ENTITY, VALUE> addField(String fieldName, String title, Icon icon) {
+		ColumnIndex index = getModelBuilderFactory().getTableIndex().getColumnIndex(fieldName);
+		Field<ENTITY, VALUE> field = Field.createField(fieldName, title, icon, index);
+		return addField(field);
+	}
+
+	public <VALUE> Field<ENTITY, VALUE> addField(Field<ENTITY, VALUE> field) {
+		if (field.getField() == null) {
+			return null;
+		}
+		fields.add(field);
+		if (field.getField() != null) {
+			handleNewField(field);
+		}
+		return field;
+	}
 
 }

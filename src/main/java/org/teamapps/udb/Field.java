@@ -17,15 +17,12 @@
  * limitations under the License.
  * =========================LICENSE_END==================================
  */
-package org.teamapps.udb.form;
+package org.teamapps.udb;
 
 import org.teamapps.data.extract.ValueExtractor;
 import org.teamapps.data.extract.ValueInjector;
 import org.teamapps.icons.api.Icon;
 import org.teamapps.universaldb.index.ColumnIndex;
-import org.teamapps.universaldb.index.file.FileValue;
-import org.teamapps.universaldb.index.reference.value.ReferenceIteratorValue;
-import org.teamapps.universaldb.index.translation.TranslatableText;
 import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.ux.component.field.*;
 import org.teamapps.ux.component.field.datetime.InstantDateField;
@@ -33,29 +30,90 @@ import org.teamapps.ux.component.field.datetime.InstantDateTimeField;
 import org.teamapps.ux.component.field.datetime.InstantTimeField;
 import org.teamapps.ux.component.field.datetime.LocalDateField;
 
-import java.util.List;
-
-public class FormField<ENTITY extends Entity, VALUE> {
+public class Field<ENTITY extends Entity<ENTITY>, VALUE> {
 
 	private final String name;
 	private final ColumnIndex index;
+	private final boolean customField;
 	private String title;
 	private Icon icon;
 	private boolean editable = true;
 	private boolean required;
-	private boolean customField;
 	private AbstractField<VALUE> field;
 	private ValueExtractor<ENTITY> valueExtractor;
 	private ValueInjector<ENTITY, VALUE> valueInjector;
 
-	protected FormField(String name, ColumnIndex index) {
-		this.name = name;
-		this.index = index;
+	public static <ENTITY extends Entity<ENTITY>, VALUE> Field<ENTITY, VALUE> copy(Field<ENTITY, VALUE> field) {
+		return new Field<>(field);
 	}
 
-	public FormField(String name) {
+	public static <ENTITY extends Entity<ENTITY>, VALUE> Field<ENTITY, VALUE> createCustomField(String name) {
+		return new Field<>(name);
+	}
+
+	public static <ENTITY extends Entity<ENTITY>, VALUE> Field<ENTITY, VALUE> createField(String name, String title, ColumnIndex index) {
+		return createField(name, title, null, index);
+	}
+
+	public static <ENTITY extends Entity<ENTITY>, VALUE> Field<ENTITY, VALUE> createField(String name, String title, Icon icon, ColumnIndex index) {
+		return new Field<ENTITY, VALUE>(name, title, icon, index);
+	}
+
+	public static <ENTITY extends Entity<ENTITY>, VALUE> Field<ENTITY, VALUE> createField(String fieldName, String title, Icon icon, ModelBuilderFactory<ENTITY> modelBuilderFactory) {
+		return new Field<>(fieldName, title, icon, true, false, modelBuilderFactory);
+	}
+
+	public static <ENTITY extends Entity<ENTITY>, VALUE> Field<ENTITY, VALUE> createField(String fieldName, String title, Icon icon, boolean editable, boolean required, ModelBuilderFactory<ENTITY> modelBuilderFactory) {
+		return new Field<>(fieldName, title, icon, editable, required, modelBuilderFactory);
+	}
+
+	protected Field(Field<ENTITY, VALUE> field) {
+		this.name = field.getName();
+		this.title = field.getTitle();
+		this.index = field.getIndex();
+		this.customField = field.isCustomField();
+		this.editable = field.isEditable();
+		this.required = field.isRequired();
+		this.valueExtractor = field.getValueExtractor();
+		this.valueInjector = field.getValueInjector();
+		if (index != null) {
+			this.field = createField(index, title);
+		}
+	}
+
+	protected Field(String name, String title, Icon icon, ColumnIndex index) {
+		this.name = name;
+		this.index = index;
+		this.customField = false;
+		this.field = createField(index, title);
+		this.title = title;
+		this.icon = icon;
+	}
+
+
+	protected Field(String name) {
 		this.name = name;
 		this.index = null;
+		this.customField = true;
+	}
+
+	protected Field(String fieldName, String title, Icon icon, boolean editable, boolean required, ModelBuilderFactory<ENTITY> modelBuilderFactory) {
+		this.name = fieldName;
+		this.index = modelBuilderFactory.getTableIndex().getColumnIndex(fieldName);
+		this.field = createField(index, title);
+		this.title = title;
+		this.icon = icon;
+		this.editable = editable;
+		this.required = required;
+		this.customField = false;
+	}
+
+	public Field<ENTITY, VALUE> copy() {
+		return new Field<>(this);
+	}
+
+	public boolean isCustomField() {
+		return customField;
 	}
 
 	public String getName() {
@@ -66,7 +124,7 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		return title;
 	}
 
-	public FormField<ENTITY, VALUE> setTitle(String title) {
+	public Field<ENTITY, VALUE> setTitle(String title) {
 		this.title = title;
 		return this;
 	}
@@ -75,7 +133,7 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		return icon;
 	}
 
-	public FormField<ENTITY, VALUE> setIcon(Icon icon) {
+	public Field<ENTITY, VALUE> setIcon(Icon icon) {
 		this.icon = icon;
 		return this;
 	}
@@ -84,7 +142,7 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		return editable;
 	}
 
-	public FormField<ENTITY, VALUE> setEditable(boolean editable) {
+	public Field<ENTITY, VALUE> setEditable(boolean editable) {
 		this.editable = editable;
 		field.setEditingMode(editable ? FieldEditingMode.EDITABLE : FieldEditingMode.READONLY);
 		return this;
@@ -94,18 +152,9 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		return required;
 	}
 
-	public FormField<ENTITY, VALUE> setRequired(boolean required) {
+	public Field<ENTITY, VALUE> setRequired(boolean required) {
 		this.required = required;
 		field.setRequired(required);
-		return this;
-	}
-
-	public boolean isCustomField() {
-		return customField;
-	}
-
-	public FormField<ENTITY, VALUE> setCustomField(boolean customField) {
-		this.customField = customField;
 		return this;
 	}
 
@@ -113,8 +162,11 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		return field;
 	}
 
-	public FormField<ENTITY, VALUE> setField(AbstractField<VALUE> field) {
+	public Field<ENTITY, VALUE> setField(AbstractField<VALUE> field) {
 		this.field = field;
+		if (required) {
+			field.setRequired(true);
+		}
 		return this;
 	}
 
@@ -122,7 +174,7 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		return valueExtractor;
 	}
 
-	public FormField<ENTITY, VALUE> setValueExtractor(ValueExtractor<ENTITY> valueExtractor) {
+	public Field<ENTITY, VALUE> setValueExtractor(ValueExtractor<ENTITY> valueExtractor) {
 		this.valueExtractor = valueExtractor;
 		return this;
 	}
@@ -131,7 +183,7 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		return valueInjector;
 	}
 
-	public FormField<ENTITY, VALUE> setValueInjector(ValueInjector<ENTITY, VALUE> valueInjector) {
+	public Field<ENTITY, VALUE> setValueInjector(ValueInjector<ENTITY, VALUE> valueInjector) {
 		this.valueInjector = valueInjector;
 		return this;
 	}
@@ -181,6 +233,7 @@ public class FormField<ENTITY extends Entity, VALUE> {
 				field = new LocalDateField();
 				break;
 			case ENUM:
+
 				field = new NumberField(0); //todo use text field with name of enum
 				break;
 			case BINARY:
@@ -192,54 +245,5 @@ public class FormField<ENTITY extends Entity, VALUE> {
 		}
 		return field;
 	}
-
-	public static ValueExtractor createValueExtractor(ColumnIndex index) {
-		switch (index.getColumnType()) {
-			case BOOLEAN:
-				break;
-			case BITSET_BOOLEAN:
-				break;
-			case SHORT:
-				break;
-			case INT:
-				break;
-			case LONG:
-				break;
-			case FLOAT:
-				break;
-			case DOUBLE:
-				break;
-			case TEXT:
-				break;
-			case TRANSLATABLE_TEXT:
-				break;
-			case FILE:
-				break;
-			case SINGLE_REFERENCE:
-				break;
-			case MULTI_REFERENCE:
-				break;
-			case TIMESTAMP:
-				break;
-			case DATE:
-				break;
-			case TIME:
-				break;
-			case DATE_TIME:
-				break;
-			case LOCAL_DATE:
-				break;
-			case ENUM:
-				break;
-			case BINARY:
-				break;
-			case CURRENCY:
-				break;
-			case DYNAMIC_CURRENCY:
-				break;
-		}
-		return null;
-	}
-
 
 }

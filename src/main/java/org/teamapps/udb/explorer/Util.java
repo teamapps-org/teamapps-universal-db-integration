@@ -19,11 +19,6 @@
  */
 package org.teamapps.udb.explorer;
 
-import org.teamapps.ux.session.SessionContext;
-
-import java.text.NumberFormat;
-import java.util.Locale;
-
 public class Util {
 
 	public static String getFirstUpper(String s) {

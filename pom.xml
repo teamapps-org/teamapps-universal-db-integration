@@ -34,7 +34,7 @@
         <slf4j-version>1.7.25</slf4j-version>
         <junit.version>4.13</junit.version>
         <teamapps-version>0.9.64</teamapps-version>
-        <universal-db-version>0.4.7</universal-db-version>
+        <universal-db-version>0.4.9-SNAPSHOT</universal-db-version>
     </properties>
 
     <distributionManagement>

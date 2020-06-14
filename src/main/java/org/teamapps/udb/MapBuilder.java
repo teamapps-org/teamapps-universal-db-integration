@@ -42,7 +42,7 @@ import org.teamapps.ux.icon.TeamAppsIconBundle;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Map<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> {
+public class MapBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> {
 
 
 	private MapModel<ENTITY> model;
@@ -51,7 +51,7 @@ public class Map<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> 
 	private Filter geoFilter;
 	private List<AbstractMapShape> mapShapes = new ArrayList<>();
 
-	protected Map(ModelBuilderFactory<ENTITY> modelBuilderFactory) {
+	protected MapBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory) {
 		super(modelBuilderFactory);
 		createMap();
 	}

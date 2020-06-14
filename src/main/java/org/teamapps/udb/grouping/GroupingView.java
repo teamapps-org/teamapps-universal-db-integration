@@ -21,6 +21,7 @@ package org.teamapps.udb.grouping;
 
 import org.teamapps.icons.api.Icon;
 import org.teamapps.udb.AbstractBuilder;
+import org.teamapps.udb.Field;
 import org.teamapps.udb.FieldInfo;
 import org.teamapps.udb.ModelBuilderFactory;
 import org.teamapps.udb.filter.*;
@@ -62,7 +63,6 @@ import java.util.stream.Collectors;
 
 public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> {
 
-	private final Set<String> fieldNames;
 	private MobileLayout layout;
 	private VerticalLayout verticalLayout;
 	private TagComboBox<GroupFilter> filtersTagComboBox;
@@ -74,10 +74,8 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 
 	private List<GroupFilter> groupFilters = new ArrayList<>();
 
-	public GroupingView(ModelBuilderFactory<ENTITY> modelBuilderFactory, String... fieldNames) {
+	public GroupingView(ModelBuilderFactory<ENTITY> modelBuilderFactory) {
 		super(modelBuilderFactory);
-		this.fieldNames = new HashSet<>(Arrays.asList(fieldNames));
-		createUi();
 	}
 
 	private void createUi() {
@@ -169,7 +167,6 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 			addFilter(entry);
 		});
 
-
 		ToolbarButtonGroup buttonGroup = toolbar.addButtonGroup(new ToolbarButtonGroup());
 		buttonGroup.addButton(ToolbarButton.createTiny(getIcon(TeamAppsIconBundle.BACK.getKey()), getLocalized(TeamAppsDictionary.BACK.getKey()))).onClick.addListener(() -> {
 			layout.setContent(filterSelectionTree, PageTransition.MOVE_TO_RIGHT_VS_MOVE_FROM_LEFT, 500);
@@ -187,7 +184,6 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 				group(currentNode);
 			}
 		});
-
 
 		layout.setContent(filterSelectionTree);
 	}
@@ -298,16 +294,18 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 
 	private List<GroupingNode> createNodes() {
 		List<GroupingNode> nodes = new ArrayList<>();
-		for (FieldInfo fieldInfo : getModelBuilderFactory().getFieldInfos()) {
-			String name = fieldInfo.getName();
-			if (fieldNames.isEmpty() || fieldNames.contains(name)) {
-				ColumnIndex columnIndex = getModelBuilderFactory().getTableIndex().getColumnIndex(name);
-				if (columnIndex != null) {
-					GroupingNode node = new GroupingNode(columnIndex, fieldInfo.getTitle(), fieldInfo.getIcon());
-					nodes.add(node);
-					if (node.getChildNodes() != null) {
-						nodes.addAll(node.getChildNodes());
-					}
+		List<Field<ENTITY, ?>> fields = getFields();
+		if (fields.isEmpty()) {
+			fields = getModelBuilderFactory().getFields();
+		}
+		for (Field<ENTITY, ?> field : fields) {
+			String name = field.getName();
+			ColumnIndex columnIndex = field.getIndex();
+			if (columnIndex != null) {
+				GroupingNode node = new GroupingNode(columnIndex, field.getTitle(), field.getIcon());
+				nodes.add(node);
+				if (node.getChildNodes() != null) {
+					nodes.addAll(node.getChildNodes());
 				}
 			}
 		}
@@ -315,6 +313,9 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 	}
 
 	public Component getView() {
+		if (layout == null) {
+			createUi();
+		}
 		return layout;
 	}
 

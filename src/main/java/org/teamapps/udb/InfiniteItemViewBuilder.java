@@ -27,8 +27,7 @@ import org.teamapps.ux.component.infiniteitemview.InfiniteItemViewModel;
 import org.teamapps.ux.component.template.Template;
 
 public class InfiniteItemViewBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> {
-
-
+	
 	protected InfiniteItemViewBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory) {
 		super(modelBuilderFactory);
 	}
@@ -49,12 +48,12 @@ public class InfiniteItemViewBuilder<ENTITY extends Entity<ENTITY>> extends Abst
 		return itemView;
 	}
 
-	public InfiniteItemView2<ENTITY> createAndAttachToViewWithHeaderField(View view, String viewTitle, Template template, float itemWidth, int itemHeight) {
+	public InfiniteItemView2<ENTITY> createAndAttachToViewWithHeaderField(View view, Template template, float itemWidth, int itemHeight) {
 		InfiniteItemView2<ENTITY> itemView = createItemView2(template, itemWidth, itemHeight);
 		view.setComponent(itemView);
 		HeaderFieldBuilder<ENTITY> headerFieldBuilder = getModelBuilderFactory().createHeaderFieldBuilder();
 		headerFieldBuilder.setSearchHeaderField(view);
-		headerFieldBuilder.setHeaderTitleHandler(view, viewTitle);
+		headerFieldBuilder.setHeaderTitleHandler(view, view.getPanel().getTitle());
 		return itemView;
 	}
 }

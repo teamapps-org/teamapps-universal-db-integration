@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,50 +20,105 @@
 package org.teamapps.udb;
 
 import org.teamapps.universaldb.index.ColumnIndex;
+import org.teamapps.universaldb.index.ColumnType;
 import org.teamapps.universaldb.index.IndexType;
 import org.teamapps.universaldb.index.numeric.IntegerIndex;
 import org.teamapps.universaldb.index.numeric.LongIndex;
 import org.teamapps.universaldb.pojo.Entity;
+import org.teamapps.universaldb.schema.Table;
 import org.teamapps.ux.component.timegraph.TimeGraphModel;
 import org.teamapps.ux.component.timegraph.partitioning.StaticPartitioningTimeGraphModel;
 import org.teamapps.ux.session.SessionContext;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class TimeGraphModelBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> {
 
+	private String queryFieldName;
+	private StaticPartitioningTimeGraphModel timeGraphModel;
 
 	protected TimeGraphModelBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory) {
 		super(modelBuilderFactory);
+		init();
 	}
 
-	private void updateBaseData(StaticPartitioningTimeGraphModel timeGraphModel, String fieldName) {
+	protected TimeGraphModelBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory, String... fieldNames) {
+		super(modelBuilderFactory);
+		addFieldCopies(fieldNames);
+		init();
+	}
+
+	protected TimeGraphModelBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory, List<Field<ENTITY, ?>> fields) {
+		super(modelBuilderFactory);
+		fields.forEach(this::addField);
+		init();
+	}
+
+	private void init() {
+		timeGraphModel = StaticPartitioningTimeGraphModel.create(SessionContext.current().getTimeZone());
+		List<Field<ENTITY, ?>> dateFields = getDateFields();
+		if (!dateFields.isEmpty()) {
+			queryFieldName = dateFields.get(0).getName();
+		}
+	}
+
+	public List<Field<ENTITY, ?>> getDateFields() {
+		return getFields().stream().filter(f -> isDateField(f)).collect(Collectors.toList());
+	}
+
+	public static <ENTITY extends Entity<ENTITY>> boolean isDateField(Field<ENTITY, ?> field) {
+		ColumnIndex column = field.getIndex();
+		if (column != null) {
+			if (column.getColumnType() == ColumnType.TIMESTAMP ||
+							column.getColumnType() == ColumnType.DATE_TIME ||
+							column.getColumnType() == ColumnType.LOCAL_DATE ||
+							column.getColumnType() == ColumnType.DATE) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public void setQueryFieldName(String fieldName) {
+		this.queryFieldName = fieldName;
+		updateBaseData();
+		updateGroupFilterData();
+		updateFullTextFilterData();
+	}
+
+	public String getQueryFieldName() {
+		return queryFieldName;
+	}
+
+	private void updateBaseData() {
 		BitSet recordSet = getModelBuilderFactory().getBaseQuery().executeToBitSet();
-		long[] timestamps = queryTimestamps(recordSet, fieldName);
+		long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 		timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.BASE_DATA_SERIES, timestamps);
 	}
 
-	private void updateGeoFilterData(StaticPartitioningTimeGraphModel timeGraphModel, String fieldName) {
+	private void updateGeoFilterData() {
 		if (getModelBuilderFactory().getGeoFilter() != null) {
 			BitSet recordSet = getModelBuilderFactory().getGeoQuery().executeToBitSet();
-			long[] timestamps = queryTimestamps(recordSet, fieldName);
+			long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 			timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.GEO_FILTER_SERIES, timestamps);
 		}
 	}
 
-	private void updateGroupFilterData(StaticPartitioningTimeGraphModel timeGraphModel, String fieldName) {
+	private void updateGroupFilterData() {
 		if (getModelBuilderFactory().getGroupFilter() != null) {
 			BitSet recordSet = getModelBuilderFactory().getGroupingQuery().executeToBitSet();
-			long[] timestamps = queryTimestamps(recordSet, fieldName);
+			long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 			timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.GROUP_FILTER_SERIES, timestamps);
 		}
 	}
 
-	private void updateFullTextFilterData(StaticPartitioningTimeGraphModel timeGraphModel, String fieldName) {
+	private void updateFullTextFilterData() {
 		if (getModelBuilderFactory().getFullTextQuery() != null && !getModelBuilderFactory().getFullTextQuery().isBlank()) {
 			BitSet recordSet = getModelBuilderFactory().getFinalQuery().executeToBitSet();
-			long[] timestamps = queryTimestamps(recordSet, fieldName);
+			long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 			timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.FULL_TEXT_DATA_SERIES, timestamps);
 		}
 	}
@@ -87,18 +142,16 @@ public class TimeGraphModelBuilder<ENTITY extends Entity<ENTITY>> extends Abstra
 		return values.stream().mapToLong(value -> value.longValue()).toArray();
 	}
 
-	public TimeGraphModel build(String fieldName) {
-		StaticPartitioningTimeGraphModel timeGraphModel = StaticPartitioningTimeGraphModel.create(SessionContext.current().getTimeZone());
-		getModelBuilderFactory().onBaseQueryDataChanged.addListener(() -> updateBaseData(timeGraphModel, fieldName));
-		getModelBuilderFactory().onGeoDataChanged.addListener(() -> updateGeoFilterData(timeGraphModel, fieldName));
-		getModelBuilderFactory().onGroupingDataChanged.addListener(() -> updateGroupFilterData(timeGraphModel, fieldName));
-		getModelBuilderFactory().onFinalDataChanged.addListener(() -> updateFullTextFilterData(timeGraphModel, fieldName));
-		updateBaseData(timeGraphModel, fieldName);
-		updateGroupFilterData(timeGraphModel, fieldName);
-		updateFullTextFilterData(timeGraphModel, fieldName);
+	public TimeGraphModel build() {
+		getModelBuilderFactory().onBaseQueryDataChanged.addListener(() -> updateBaseData());
+		getModelBuilderFactory().onGeoDataChanged.addListener(() -> updateGeoFilterData());
+		getModelBuilderFactory().onGroupingDataChanged.addListener(() -> updateGroupFilterData());
+		getModelBuilderFactory().onFinalDataChanged.addListener(() -> updateFullTextFilterData());
+		updateBaseData();
+		updateGroupFilterData();
+		updateFullTextFilterData();
 		return timeGraphModel;
 	}
-
 
 
 }

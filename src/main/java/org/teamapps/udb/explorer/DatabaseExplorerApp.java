@@ -22,6 +22,7 @@ package org.teamapps.udb.explorer;
 import org.apache.commons.collections4.map.HashedMap;
 import org.teamapps.icon.material.MaterialIcon;
 import org.teamapps.udb.ModelBuilderFactory;
+import org.teamapps.udb.decider.DeciderSet;
 import org.teamapps.udb.form.FormBuilder;
 import org.teamapps.udb.grouping.GroupingView;
 import org.teamapps.universaldb.UniversalDB;
@@ -30,6 +31,7 @@ import org.teamapps.universaldb.index.reference.multi.MultiReferenceIndex;
 import org.teamapps.universaldb.index.reference.single.SingleReferenceIndex;
 import org.teamapps.universaldb.pojo.AbstractUdbEntity;
 import org.teamapps.universaldb.pojo.AbstractUdbQuery;
+import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.ux.application.ResponsiveApplication;
 import org.teamapps.ux.application.layout.StandardLayout;
 import org.teamapps.ux.application.perspective.Perspective;
@@ -55,6 +57,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class DatabaseExplorerApp {
@@ -62,19 +65,38 @@ public class DatabaseExplorerApp {
 	private final UniversalDB universalDB;
 	private final ResponsiveApplication application;
 	private final SchemaIndex schemaIndex;
+	private final Function<Entity, DeciderSet<Entity>> deciderSetByEntityFunction;
 
 	private Perspective forceLayoutPerspective;
 	private Perspective treeGraphPerspective;
 
 	private Map<Node, Perspective> perspectiveByNode = new HashedMap<>();
 
-	public DatabaseExplorerApp(UniversalDB universalDB) {
-		this(universalDB, ResponsiveApplication.createApplication());
+
+	public DatabaseExplorerApp(UniversalDB universalDB,
+							   boolean allowCreation,
+							   boolean allowModification,
+							   boolean allowDeletion,
+							   boolean allowReadingDeleted,
+							   boolean allowRestore) {
+		this(universalDB, ResponsiveApplication.createApplication(), allowCreation, allowModification, allowDeletion, allowReadingDeleted, allowRestore);
 	}
 
-	public DatabaseExplorerApp(UniversalDB universalDB, ResponsiveApplication application) {
+	public DatabaseExplorerApp(UniversalDB universalDB,
+							   ResponsiveApplication application,
+							   boolean allowCreation,
+							   boolean allowModification,
+							   boolean allowDeletion,
+							   boolean allowReadingDeleted,
+							   boolean allowRestore) {
+		this(universalDB, application, entity -> DeciderSet.create(allowCreation, allowModification, allowDeletion, allowReadingDeleted, allowRestore));
+	}
+
+
+	public DatabaseExplorerApp(UniversalDB universalDB, ResponsiveApplication application, Function<Entity, DeciderSet<Entity>> deciderSetByEntityFunction) {
 		this.universalDB = universalDB;
 		this.application = application;
+		this.deciderSetByEntityFunction = deciderSetByEntityFunction;
 		schemaIndex = universalDB.getSchemaIndex();
 		createUI();
 	}
@@ -192,14 +214,15 @@ public class DatabaseExplorerApp {
 		String path = pojoNamespace + "." + tableIndex.getDatabaseIndex().getName() + ".Udb" + Util.getFirstUpper(tableIndex.getName());
 		ModelBuilderFactory factory = new ModelBuilderFactory(() -> createQuery(path));
 		for (ColumnIndex columnIndex : tableIndex.getColumnIndices()) {
-			factory.addFieldInfo(columnIndex.getName(), Util.createTitleFromCamelCase(columnIndex.getName()), MaterialIcon.LABEL_OUTLINE);
+			factory.addField(columnIndex.getName(), Util.createTitleFromCamelCase(columnIndex.getName()), MaterialIcon.LABEL_OUTLINE);
 		}
 
 		String[] fieldNames = tableIndex.getColumnIndices().stream().map(column -> column.getName()).collect(Collectors.toList()).toArray(new String[0]);
-		factory.createTableBuilder().createAndAttachToViewWithHeaderField(centerView, node.getName(), fieldNames);
+		factory.createTableBuilder().createAndAttachToViewWithHeaderField(centerView);
 
-		FormBuilder formBuilder = factory.createFormBuilder(createEntity(path));
-		formBuilder.addFields(fieldNames);
+		AbstractUdbEntity entity = createEntity(path);
+		FormBuilder formBuilder = factory.createFormBuilder(entity, deciderSetByEntityFunction.apply(entity));
+		formBuilder.addFieldCopies(fieldNames);
 		formBuilder.createAndAttachToViewWithToolbarButtons(rightView);
 		rightView.setVisible(true);
 
@@ -207,7 +230,7 @@ public class DatabaseExplorerApp {
 		topView.setComponent(timeGraph);
 		topView.setVisible(true);
 
-		GroupingView groupingView = factory.createGroupingView(fieldNames);
+		GroupingView groupingView = factory.createGroupingView();
 		groupingView.createAndAttachToViewWithHeaderField(leftBottomView);
 		leftBottomView.setVisible(true);
 		application.showPerspective(perspective);

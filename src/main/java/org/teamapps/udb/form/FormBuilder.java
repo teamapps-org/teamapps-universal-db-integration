@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,8 +24,10 @@ import org.teamapps.data.extract.ValueInjector;
 import org.teamapps.databinding.TwoWayBindableValue;
 import org.teamapps.icons.api.Icon;
 import org.teamapps.udb.AbstractBuilder;
-import org.teamapps.udb.FieldInfo;
+import org.teamapps.udb.Field;
 import org.teamapps.udb.ModelBuilderFactory;
+import org.teamapps.udb.decider.DeciderSet;
+import org.teamapps.udb.decider.EntityValidationResult;
 import org.teamapps.universaldb.index.ColumnIndex;
 import org.teamapps.universaldb.index.bool.BooleanIndex;
 import org.teamapps.universaldb.index.numeric.*;
@@ -36,6 +38,7 @@ import org.teamapps.universaldb.pojo.AbstractUdbEntity;
 import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.universaldb.record.EntityBuilder;
 import org.teamapps.ux.application.view.View;
+import org.teamapps.ux.component.dialogue.Dialogue;
 import org.teamapps.ux.component.field.*;
 import org.teamapps.ux.component.field.datetime.InstantDateField;
 import org.teamapps.ux.component.field.datetime.InstantDateTimeField;
@@ -50,15 +53,13 @@ import org.teamapps.ux.i18n.TeamAppsDictionary;
 import org.teamapps.ux.icon.TeamAppsIconBundle;
 import org.teamapps.ux.session.SessionContext;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> {
 
 	private final EntityBuilder<ENTITY> entityBuilder;
+	private final DeciderSet<ENTITY> deciderSet;
 	private ToolbarButton addRecordButton;
 	private ToolbarButton saveButton;
 	private ToolbarButton deleteButton;
@@ -67,13 +68,13 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 
 	private ResponsiveForm<ENTITY> form;
 	private ResponsiveFormLayout formLayout;
-	private List<FormField<ENTITY, ? extends Object>> formFields = new ArrayList<>();
-	private Map<String, FormField<ENTITY, ? extends Object>> formFieldByName = new HashMap<>();
 	private final TwoWayBindableValue<ENTITY> displayedEntity = TwoWayBindableValue.create();
 
-	public FormBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory, EntityBuilder<ENTITY> entityBuilder) {
+
+	public FormBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory, EntityBuilder<ENTITY> entityBuilder, DeciderSet<ENTITY> deciderSet) {
 		super(modelBuilderFactory);
 		this.entityBuilder = entityBuilder;
+		this.deciderSet = deciderSet;
 		init();
 	}
 
@@ -81,37 +82,65 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 		form = new ResponsiveForm<>(100, 150, 0);
 		formLayout = form.addResponsiveFormLayout(450);
 		ModelBuilderFactory<ENTITY> factory = getModelBuilderFactory();
-		factory.onRecordSelected.addListener(entity -> {
-			displayedEntity.set(entity);
-		});
 
-		displayedEntity.onChanged().addListener(entity -> setFormValues(entity));
 
-		addRecordButton = ToolbarButton.create(getIcon(TeamAppsIconBundle.ADD.getKey()), getLocalized(TeamAppsDictionary.ADD.getKey()) , getLocalized(TeamAppsDictionary.ADD_RECORD.getKey()));
+		addRecordButton = ToolbarButton.create(getIcon(TeamAppsIconBundle.ADD.getKey()), getLocalized(TeamAppsDictionary.ADD.getKey()), getLocalized(TeamAppsDictionary.ADD_RECORD.getKey()));
 		saveButton = ToolbarButton.createSmall(getIcon(TeamAppsIconBundle.SAVE.getKey()), getLocalized(TeamAppsDictionary.SAVE.getKey()));
 		deleteButton = ToolbarButton.createSmall(getIcon(TeamAppsIconBundle.DELETE.getKey()), getLocalized(TeamAppsDictionary.DELETE.getKey()));
 
+		addRecordButton.setVisible(deciderSet.isAllowCreation());
+
 		saveButton.onClick.addListener(() -> {
 			ENTITY entity = displayedEntity.get();
-			if (entity != null) {
+			EntityValidationResult validationResult = deciderSet.getValidationDecider().validate(entity);
+			if (validationResult.isSuccess()) {
 				saveForm(entity);
+			} else {
+				Dialogue.showOk(getIcon(TeamAppsIconBundle.DELETE.getKey()), validationResult.getError(), validationResult.getError());
 			}
 		});
 
 		deleteButton.onClick.addListener(() -> {
-			//..
+			ENTITY entity = displayedEntity.get();
+			Dialogue okCancel = Dialogue.createOkCancel(getIcon(TeamAppsIconBundle.DELETE.getKey()), getLocalized(TeamAppsDictionary.DELETE_RECORD.getKey()));
+			okCancel.show();
+			okCancel.onResult.addListener(ok -> {
+				if (ok) {
+					entity.delete();
+				}
+			});
 		});
 
 		addRecordButton.onClick.addListener(() -> {
-			setFormValues(entityBuilder.build());
+			ENTITY entity = entityBuilder.build();
+			displayedEntity.set(entity);
 		});
 
-		displayedEntity.bindWritingTo(entity -> deleteButton.setVisible(entity != null));
-		displayedEntity.bindWritingTo(entity -> saveButton.setVisible(entity != null));
+
+		factory.onRecordSelected.addListener(entity -> {
+			displayedEntity.set(entity);
+		});
+
+		displayedEntity.onChanged().addListener(entity -> {
+			setFormValues(entity);
+			deleteButton.setVisible(deciderSet.getDeletionDecider().allowDeletion(entity));
+			if (!entity.exists()) {
+				saveButton.setVisible(deciderSet.isAllowCreation());
+			} else {
+				saveButton.setVisible(deciderSet.getModificationDecider().allowModification(entity));
+			}
+		});
+
 
 	}
 
 	public void createAndAttachToViewWithToolbarButtons(View view) {
+		if (getFields().isEmpty()) {
+			addSection();
+			for (Field<ENTITY, ?> field : getModelBuilderFactory().getFields()) {
+				addFieldCopy(field.getName());
+			}
+		}
 		view.setComponent(form);
 		ToolbarButtonGroup buttonGroup = view.addLocalButtonGroup(new ToolbarButtonGroup());
 		buttonGroup.addButton(saveButton);
@@ -122,7 +151,7 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 
 	public void setFormValues(ENTITY record) {
 		AbstractUdbEntity<ENTITY> entity = (AbstractUdbEntity<ENTITY>) record;
-		for (FormField<ENTITY, ?> formField : formFields) {
+		for (Field<ENTITY, ?> formField : getFields()) {
 			if (formField.getIndex() != null) {
 				ColumnIndex index = formField.getIndex();
 				switch (index.getColumnType()) {
@@ -211,12 +240,12 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 	}
 
 	public void saveForm(ENTITY record) {
-		List<AbstractField<?>> fields = formFields.stream().map(f -> f.getField()).collect(Collectors.toList());
+		List<AbstractField<?>> fields = getFields().stream().map(Field::getField).collect(Collectors.toList());
 		if (!Fields.validateAll(fields)) {
 			return;
 		}
 		AbstractUdbEntity<ENTITY> entity = (AbstractUdbEntity<ENTITY>) record;
-		for (FormField<ENTITY, ?> formField : formFields) {
+		for (Field<ENTITY, ?> formField : getFields()) {
 			if (!formField.isEditable()) {
 				continue;
 			}
@@ -320,49 +349,8 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 		return formLayout.addSection(icon, text);
 	}
 
-	public void addFields(String... fieldNames) {
-		for (String fieldName : fieldNames) {
-			addField(fieldName);
-		}
-	}
-
-	public <VALUE> FormField<ENTITY, VALUE> addField(String fieldName) {
-		ColumnIndex index = getModelBuilderFactory().getTableIndex().getColumnIndex(fieldName);
-		FormField<ENTITY, VALUE> formField = new FormField<>(fieldName, index);
-		FieldInfo fieldInfo = getFieldInfo(fieldName);
-		if (fieldInfo != null) {
-			formField.setIcon(fieldInfo.getIcon());
-			formField.setTitle(fieldInfo.getTitle());
-		}
-		if (index != null) {
-			AbstractField abstractField = FormField.createField(index, formField.getTitle());
-			formField.setField(abstractField);
-		}
-		addFormField(formField);
-		return formField;
-	}
-
-	public FormField<ENTITY, String> addTextField(String fieldName) {
-		return addField(fieldName);
-	}
-
-	public <VALUE> void addCustomField(FormField<ENTITY, VALUE> formField) {
-		addFormField(formField);
-	}
-
-	private <VALUE> void addFormField(FormField<ENTITY, VALUE> formField) {
-		if (formField.getField() == null) {
-			return;
-		}
-		formFields.add(formField);
-		formFieldByName.put(formField.getName(), formField);
-		formLayout.addLabelAndField(formField.getIcon(), formField.getTitle(), formField.getName(), formField.getField());
-	}
-
-	private FieldInfo getFieldInfo(String fieldName) {
-		return getModelBuilderFactory().getFieldInfos().stream()
-				.filter(fieldInfo -> fieldInfo.getName().equals(fieldName))
-				.findAny()
-				.orElse(null);
+	@Override
+	protected <VALUE> void handleNewField(Field<ENTITY, VALUE> field) {
+		formLayout.addLabelAndField(field.getIcon(), field.getTitle(), field.getName(), field.getField());
 	}
 }
