@@ -22,13 +22,30 @@ package org.teamapps.udb;
 import org.teamapps.data.extract.ValueExtractor;
 import org.teamapps.data.extract.ValueInjector;
 import org.teamapps.icons.api.Icon;
+import org.teamapps.udb.explorer.Util;
 import org.teamapps.universaldb.index.ColumnIndex;
+import org.teamapps.universaldb.index.ColumnType;
+import org.teamapps.universaldb.index.TableIndex;
+import org.teamapps.universaldb.index.reference.multi.MultiReferenceIndex;
+import org.teamapps.universaldb.index.reference.single.SingleReferenceIndex;
+import org.teamapps.universaldb.index.text.TextIndex;
+import org.teamapps.universaldb.pojo.AbstractUdbEntity;
 import org.teamapps.universaldb.pojo.Entity;
+import org.teamapps.universaldb.pojo.EntityArrayList;
+import org.teamapps.universaldb.schema.Column;
 import org.teamapps.ux.component.field.*;
+import org.teamapps.ux.component.field.combobox.ComboBox;
 import org.teamapps.ux.component.field.datetime.InstantDateField;
 import org.teamapps.ux.component.field.datetime.InstantDateTimeField;
 import org.teamapps.ux.component.field.datetime.InstantTimeField;
 import org.teamapps.ux.component.field.datetime.LocalDateField;
+import org.teamapps.ux.component.template.BaseTemplate;
+import org.teamapps.ux.icon.TeamAppsIconBundle;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Field<ENTITY extends Entity<ENTITY>, VALUE> {
 
@@ -215,9 +232,49 @@ public class Field<ENTITY extends Entity<ENTITY>, VALUE> {
 			case FILE:
 				break;
 			case SINGLE_REFERENCE:
-				//todo
+				SingleReferenceIndex singleReferenceIndex = (SingleReferenceIndex) columnIndex;
+				TableIndex referencedTable = singleReferenceIndex.getReferencedTable();
+				List<TextIndex> textIndices = referencedTable.getColumnIndices().stream()
+						.filter(c -> c.getColumnType() == ColumnType.TEXT)
+						.limit(5)
+						.map(c -> (TextIndex) c)
+						.collect(Collectors.toList());
+				ComboBox<AbstractUdbEntity> referenceCombo = new ComboBox<>(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
+				referenceCombo.setPropertyExtractor((entity, propertyName) -> {
+					switch (propertyName) {
+						case BaseTemplate.PROPERTY_ICON:
+							if (entity != null) {
+								return TeamAppsIconBundle.REFERENCE.getIcon();
+							}
+						case BaseTemplate.PROPERTY_CAPTION:
+							if (entity != null) {
+								return textIndices.stream()
+										.filter(t -> t.getValue(entity.getId()) != null)
+										.map(t -> t.getValue(entity.getId()))
+										.collect(Collectors.joining(", "));
+							}
+						default:
+							return null;
+					}
+				});
+				field = referenceCombo;
 				break;
 			case MULTI_REFERENCE:
+				MultiReferenceIndex multiReferenceIndex = (MultiReferenceIndex) columnIndex;
+				ComboBox<List> multiRefCombo = new ComboBox<>(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
+				multiRefCombo.setPropertyExtractor((list, propertyName) -> {
+					switch (propertyName) {
+						case BaseTemplate.PROPERTY_ICON:
+							return TeamAppsIconBundle.MULTI_REFERENCE.getIcon();
+						case BaseTemplate.PROPERTY_CAPTION:
+							if (list != null) {
+								return "(" + list.size() + ")";
+							}
+						default:
+							return null;
+					}
+				});
+				field = multiRefCombo;
 				break;
 			case TIMESTAMP:
 			case DATE_TIME:
@@ -233,8 +290,22 @@ public class Field<ENTITY extends Entity<ENTITY>, VALUE> {
 				field = new LocalDateField();
 				break;
 			case ENUM:
-
-				field = new NumberField(0); //todo use text field with name of enum
+				ComboBox<Enum> comboBox = new ComboBox<>(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
+				comboBox.setPropertyExtractor((enumValue, propertyName) -> {
+					switch (propertyName) {
+						case BaseTemplate.PROPERTY_ICON:
+							if (enumValue != null) {
+								return TeamAppsIconBundle.ENUM.getIcon();
+							}
+						case BaseTemplate.PROPERTY_CAPTION:
+							if (enumValue != null) {
+								return enumValue.name();
+							}
+						default:
+							return null;
+					}
+				});
+				field = comboBox;
 				break;
 			case BINARY:
 				break;

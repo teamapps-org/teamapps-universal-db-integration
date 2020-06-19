@@ -36,6 +36,7 @@ import org.teamapps.ux.application.ResponsiveApplication;
 import org.teamapps.ux.application.layout.StandardLayout;
 import org.teamapps.ux.application.perspective.Perspective;
 import org.teamapps.ux.application.view.View;
+import org.teamapps.ux.application.view.ViewSize;
 import org.teamapps.ux.component.Component;
 import org.teamapps.ux.component.charting.forcelayout.ExpandedState;
 import org.teamapps.ux.component.charting.forcelayout.ForceLayoutGraph;
@@ -123,6 +124,7 @@ public class DatabaseExplorerApp {
 		}
 
 		View applicationView = View.createView(StandardLayout.LEFT, MaterialIcon.VIEW_CAROUSEL, "Database", null);
+		applicationView.setSize(ViewSize.ofAbsoluteWidth(250));
 		application.addApplicationView(applicationView);
 
 		forceLayoutPerspective = application.addPerspective(Perspective.createPerspective());
@@ -209,20 +211,14 @@ public class DatabaseExplorerApp {
 		View centerView = perspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, node.getName(), null));
 		View rightView = perspective.addView(View.createView(StandardLayout.CENTER_BOTTOM, MaterialIcon.VIEW_CAROUSEL, node.getName(), null));
 
-
 		String pojoNamespace = tableIndex.getDatabaseIndex().getSchemaIndex().getSchema().getPojoNamespace();
 		String path = pojoNamespace + "." + tableIndex.getDatabaseIndex().getName() + ".Udb" + Util.getFirstUpper(tableIndex.getName());
 		ModelBuilderFactory factory = new ModelBuilderFactory(() -> createQuery(path));
-		for (ColumnIndex columnIndex : tableIndex.getColumnIndices()) {
-			factory.addField(columnIndex.getName(), Util.createTitleFromCamelCase(columnIndex.getName()), MaterialIcon.LABEL_OUTLINE);
-		}
-
-		String[] fieldNames = tableIndex.getColumnIndices().stream().map(column -> column.getName()).collect(Collectors.toList()).toArray(new String[0]);
+		factory.addAllEntityFields();
 		factory.createTableBuilder().createAndAttachToViewWithHeaderField(centerView);
 
 		AbstractUdbEntity entity = createEntity(path);
 		FormBuilder formBuilder = factory.createFormBuilder(entity, deciderSetByEntityFunction.apply(entity));
-		formBuilder.addFieldCopies(fieldNames);
 		formBuilder.createAndAttachToViewWithToolbarButtons(rightView);
 		rightView.setVisible(true);
 
@@ -261,7 +257,7 @@ public class DatabaseExplorerApp {
 		graph.setPropertyExtractor(Node.createPropertyExtractor(numberFormat));
 
 		List<ForceLayoutNode<Node>> nodes = new ArrayList<>();
-		List<ForceLayoutLink> links = new ArrayList<>();
+		List<ForceLayoutLink<Node>> links = new ArrayList<>();
 
 		Node schemaNode = new Node("Schema", NodeType.SCHEMA, schemaIndex);
 		ForceLayoutNode<Node> schemaGraphNode = createForceLayoutNode(schemaNode);

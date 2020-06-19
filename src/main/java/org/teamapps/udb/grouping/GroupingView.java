@@ -302,7 +302,7 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 			String name = field.getName();
 			ColumnIndex columnIndex = field.getIndex();
 			if (columnIndex != null) {
-				GroupingNode node = new GroupingNode(columnIndex, field.getTitle(), field.getIcon());
+				GroupingNode node = new GroupingNode(columnIndex, field.getTitle(), field.getIcon() != null ? field.getIcon() : getIcon(TeamAppsIconBundle.ENUM.getKey()));
 				nodes.add(node);
 				if (node.getChildNodes() != null) {
 					nodes.addAll(node.getChildNodes());

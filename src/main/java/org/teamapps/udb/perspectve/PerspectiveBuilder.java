@@ -6,6 +6,7 @@ import org.teamapps.icons.api.Icon;
 import org.teamapps.udb.*;
 import org.teamapps.udb.decider.DeciderSet;
 import org.teamapps.udb.form.FormBuilder;
+import org.teamapps.udb.grouping.GroupingView;
 import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.universaldb.record.EntityBuilder;
 import org.teamapps.ux.application.perspective.Perspective;
@@ -115,6 +116,8 @@ public class PerspectiveBuilder<ENTITY extends Entity<ENTITY>> extends AbstractB
 					}
 					break;
 				case GROUPING_VIEW:
+					GroupingView<ENTITY> groupingView = factory.createGroupingView();
+					groupingView.createAndAttachToViewWithHeaderField(view);
 					break;
 			}
 		}
