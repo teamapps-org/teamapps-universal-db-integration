@@ -30,6 +30,7 @@ import org.teamapps.universaldb.index.reference.multi.MultiReferenceIndex;
 import org.teamapps.universaldb.index.reference.single.SingleReferenceIndex;
 import org.teamapps.universaldb.index.text.TextIndex;
 import org.teamapps.universaldb.pojo.AbstractUdbEntity;
+import org.teamapps.universaldb.pojo.AbstractUdbQuery;
 import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.universaldb.pojo.EntityArrayList;
 import org.teamapps.universaldb.schema.Column;
@@ -248,7 +249,7 @@ public class Field<ENTITY extends Entity<ENTITY>, VALUE> {
 							}
 						case BaseTemplate.PROPERTY_CAPTION:
 							if (entity != null) {
-								return textIndices.stream()
+								return entity.getId() + ": " + textIndices.stream()
 										.filter(t -> t.getValue(entity.getId()) != null)
 										.map(t -> t.getValue(entity.getId()))
 										.collect(Collectors.joining(", "));
@@ -261,14 +262,15 @@ public class Field<ENTITY extends Entity<ENTITY>, VALUE> {
 				break;
 			case MULTI_REFERENCE:
 				MultiReferenceIndex multiReferenceIndex = (MultiReferenceIndex) columnIndex;
-				ComboBox<List> multiRefCombo = new ComboBox<>(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
+				ComboBox<List<Entity>> multiRefCombo = new ComboBox<>(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
 				multiRefCombo.setPropertyExtractor((list, propertyName) -> {
 					switch (propertyName) {
 						case BaseTemplate.PROPERTY_ICON:
 							return TeamAppsIconBundle.MULTI_REFERENCE.getIcon();
 						case BaseTemplate.PROPERTY_CAPTION:
 							if (list != null) {
-								return "(" + list.size() + ")";
+								String ids = list.stream().limit(5).map(e -> "" + e.getId()).collect(Collectors.joining(", "));
+								return list.size() > 5 ? ids + " (" + list.size() + ")" : ids;
 							}
 						default:
 							return null;

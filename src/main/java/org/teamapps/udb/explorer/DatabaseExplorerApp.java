@@ -211,6 +211,8 @@ public class DatabaseExplorerApp {
 		View centerView = perspective.addView(View.createView(StandardLayout.CENTER, MaterialIcon.VIEW_CAROUSEL, node.getName(), null));
 		View rightView = perspective.addView(View.createView(StandardLayout.CENTER_BOTTOM, MaterialIcon.VIEW_CAROUSEL, node.getName(), null));
 
+		leftBottomView.setSize(ViewSize.ofAbsoluteWidth(250));
+
 		String pojoNamespace = tableIndex.getDatabaseIndex().getSchemaIndex().getSchema().getPojoNamespace();
 		String path = pojoNamespace + "." + tableIndex.getDatabaseIndex().getName() + ".Udb" + Util.getFirstUpper(tableIndex.getName());
 		ModelBuilderFactory factory = new ModelBuilderFactory(() -> createQuery(path));
