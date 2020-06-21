@@ -19,6 +19,7 @@
  */
 package org.teamapps.udb.form;
 
+import org.teamapps.data.extract.BeanPropertyExtractor;
 import org.teamapps.data.extract.ValueExtractor;
 import org.teamapps.data.extract.ValueInjector;
 import org.teamapps.databinding.TwoWayBindableValue;
@@ -29,6 +30,7 @@ import org.teamapps.udb.ModelBuilderFactory;
 import org.teamapps.udb.decider.DeciderSet;
 import org.teamapps.udb.decider.EntityValidationResult;
 import org.teamapps.universaldb.index.ColumnIndex;
+import org.teamapps.universaldb.index.ColumnType;
 import org.teamapps.universaldb.index.bool.BooleanIndex;
 import org.teamapps.universaldb.index.numeric.*;
 import org.teamapps.universaldb.index.text.TextIndex;
@@ -69,12 +71,14 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 	private ResponsiveForm<ENTITY> form;
 	private ResponsiveFormLayout formLayout;
 	private final TwoWayBindableValue<ENTITY> displayedEntity = TwoWayBindableValue.create();
+	private final BeanPropertyExtractor<ENTITY> beanPropertyExtractor;
 
 
 	public FormBuilder(ModelBuilderFactory<ENTITY> modelBuilderFactory, EntityBuilder<ENTITY> entityBuilder, DeciderSet<ENTITY> deciderSet) {
 		super(modelBuilderFactory);
 		this.entityBuilder = entityBuilder;
 		this.deciderSet = deciderSet;
+		beanPropertyExtractor = new BeanPropertyExtractor<>();
 		init();
 	}
 
@@ -87,6 +91,7 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 		addRecordButton = ToolbarButton.create(getIcon(TeamAppsIconBundle.ADD.getKey()), getLocalized(TeamAppsDictionary.ADD.getKey()), getLocalized(TeamAppsDictionary.ADD_RECORD.getKey()));
 		saveButton = ToolbarButton.createSmall(getIcon(TeamAppsIconBundle.SAVE.getKey()), getLocalized(TeamAppsDictionary.SAVE.getKey()));
 		deleteButton = ToolbarButton.createSmall(getIcon(TeamAppsIconBundle.DELETE.getKey()), getLocalized(TeamAppsDictionary.DELETE.getKey()));
+
 
 		addRecordButton.setVisible(deciderSet.isAllowCreation());
 
@@ -150,85 +155,21 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 	}
 
 	public void setFormValues(ENTITY record) {
-		AbstractUdbEntity<ENTITY> entity = (AbstractUdbEntity<ENTITY>) record;
 		for (Field<ENTITY, ?> formField : getFields()) {
-			if (formField.getIndex() != null) {
+			if (formField.getIndex() != null && formField.getField() != null) {
 				ColumnIndex index = formField.getIndex();
-				switch (index.getColumnType()) {
-					case BOOLEAN:
-					case BITSET_BOOLEAN:
-						CheckBox checkBox = (CheckBox) formField.getField();
-						checkBox.setValue(entity.getBooleanValue((BooleanIndex) index));
-						break;
-					case SHORT:
-						NumberField shortNumberField = (NumberField) formField.getField();
-						shortNumberField.setValue(entity.getShortValue((ShortIndex) index));
-						break;
-					case INT:
-						NumberField intNumberField = (NumberField) formField.getField();
-						intNumberField.setValue(entity.getIntValue((IntegerIndex) index));
-						break;
-					case LONG:
-						NumberField longNumberField = (NumberField) formField.getField();
-						longNumberField.setValue(entity.getLongValue((LongIndex) index));
-						break;
-					case FLOAT:
-						NumberField floatNumberField = (NumberField) formField.getField();
-						floatNumberField.setValue(entity.getFloatValue((FloatIndex) index));
-						break;
-					case DOUBLE:
-						NumberField doubleNumberField = (NumberField) formField.getField();
-						doubleNumberField.setValue(entity.getDoubleValue((DoubleIndex) index));
-						break;
-					case TEXT:
-						TextField textField = (TextField) formField.getField();
-						textField.setValue(entity.getTextValue((TextIndex) index));
-						break;
-					case TRANSLATABLE_TEXT:
-						TextField translatableTextField = (TextField) formField.getField();
-						TranslatableText translatableTextValue = entity.getTranslatableTextValue((TranslatableTextIndex) index);
-						if (translatableTextValue == null) {
-							translatableTextField.setValue(null);
-						} else {
-							translatableTextField.setValue(translatableTextValue.getText(SessionContext.current().getLocale().getLanguage()));
-						}
-						break;
-					case FILE:
-						//todo
-						break;
-					case SINGLE_REFERENCE:
-						break;
-					case MULTI_REFERENCE:
-						break;
-					case TIMESTAMP:
-						InstantDateTimeField timestampField = (InstantDateTimeField) formField.getField();
-						timestampField.setValue(entity.getTimestampValue((IntegerIndex) index));
-						break;
-					case DATE:
-						InstantDateField dateField = (InstantDateField) formField.getField();
-						dateField.setValue(entity.getDateValue((LongIndex) index));
-						break;
-					case TIME:
-						InstantTimeField timeField = (InstantTimeField) formField.getField();
-						timeField.setValue(entity.getTimeValue((IntegerIndex) index));
-						break;
-					case DATE_TIME:
-						InstantDateTimeField dateTimeField = (InstantDateTimeField) formField.getField();
-						dateTimeField.setValue(entity.getDateTimeValue((LongIndex) index));
-						break;
-					case LOCAL_DATE:
-						LocalDateField localDateField = (LocalDateField) formField.getField();
-						localDateField.setValue(entity.getLocalDateValue((LongIndex) index));
-						break;
-					case ENUM:
-						//todo
-						break;
-					case BINARY:
-						break;
-					case CURRENCY:
-						break;
-					case DYNAMIC_CURRENCY:
-						break;
+				if (index.getColumnType() == ColumnType.TRANSLATABLE_TEXT) {
+					AbstractUdbEntity<ENTITY> entity = (AbstractUdbEntity<ENTITY>) record;
+					TextField translatableTextField = (TextField) formField.getField();
+					TranslatableText translatableTextValue = entity.getTranslatableTextValue((TranslatableTextIndex) index);
+					if (translatableTextValue == null) {
+						translatableTextField.setValue(null);
+					} else {
+						translatableTextField.setValue(translatableTextValue.getText(SessionContext.current().getLocale().getLanguage()));
+					}
+				} else {
+					AbstractField<Object> field = (AbstractField<Object>) formField.getField();
+					field.setValue(beanPropertyExtractor.getValue(record, index.getName()));
 				}
 			} else if (formField.getValueExtractor() != null) {
 				ValueExtractor<ENTITY> valueExtractor = formField.getValueExtractor();
@@ -259,23 +200,23 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 						break;
 					case SHORT:
 						NumberField shortNumberField = (NumberField) formField.getField();
-						entity.setShortValue(shortNumberField.getValue().shortValue(), (ShortIndex) index);
+						entity.setShortValue(shortNumberField.getValue() != null ? shortNumberField.getValue().shortValue() : (short) 0, (ShortIndex) index);
 						break;
 					case INT:
 						NumberField intNumberField = (NumberField) formField.getField();
-						entity.setIntValue(intNumberField.getValue().intValue(), (IntegerIndex) index);
+						entity.setIntValue(intNumberField.getValue() != null ? intNumberField.getValue().intValue() : 0, (IntegerIndex) index);
 						break;
 					case LONG:
 						NumberField longNumberField = (NumberField) formField.getField();
-						entity.setLongValue(longNumberField.getValue().longValue(), (LongIndex) index);
+						entity.setLongValue(longNumberField.getValue() != null ? longNumberField.getValue().longValue() : 0, (LongIndex) index);
 						break;
 					case FLOAT:
 						NumberField floatNumberField = (NumberField) formField.getField();
-						entity.setFloatValue(floatNumberField.getValue().floatValue(), (FloatIndex) index);
+						entity.setFloatValue(floatNumberField.getValue() != null ? floatNumberField.getValue().floatValue() : 0, (FloatIndex) index);
 						break;
 					case DOUBLE:
 						NumberField doubleNumberField = (NumberField) formField.getField();
-						entity.setDoubleValue(doubleNumberField.getValue().doubleValue(), (DoubleIndex) index);
+						entity.setDoubleValue(doubleNumberField.getValue() != null ? doubleNumberField.getValue().doubleValue() : 0, (DoubleIndex) index);
 						break;
 					case TEXT:
 						TextField textField = (TextField) formField.getField();
