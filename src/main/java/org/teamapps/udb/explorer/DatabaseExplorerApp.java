@@ -51,6 +51,8 @@ import org.teamapps.ux.component.toolbar.ToolbarButton;
 import org.teamapps.ux.component.toolbar.ToolbarButtonGroup;
 import org.teamapps.ux.component.tree.Tree;
 import org.teamapps.ux.component.tree.TreeNodeInfo;
+import org.teamapps.ux.component.tree.TreeNodeInfoImpl;
+import org.teamapps.ux.model.AbstractTreeModel;
 import org.teamapps.ux.model.ListTreeModel;
 import org.teamapps.ux.session.SessionContext;
 
@@ -137,31 +139,13 @@ public class DatabaseExplorerApp {
 		application.showPerspective(forceLayoutPerspective);
 		NumberFormat numberFormat = NumberFormat.getInstance(SessionContext.current().getLocale());
 
-		Tree<Node> tree = new Tree<>(new ListTreeModel<>(nodes));
+		ListTreeModel<Node> treeModel = new ListTreeModel<>(nodes);
+		treeModel.setTreeNodeInfoFunction(node -> new TreeNodeInfoImpl<>(node.getParent(), node.getType() == NodeType.SCHEMA || node.getType() == NodeType.DATABASE));
+		Tree<Node> tree = new Tree<>(treeModel);
 		tree.setPropertyExtractor(Node.createPropertyExtractor(numberFormat));
 		tree.setEntryTemplate(BaseTemplate.LIST_ITEM_MEDIUM_ICON_TWO_LINES);
 		tree.setShowExpanders(true);
 		tree.setPropertyExtractor(Node.createPropertyExtractor(numberFormat));
-		tree.setTreeNodeInfoExtractor(node -> new TreeNodeInfo() {
-			@Override
-			public Object getParent() {
-				return node.getParent();
-			}
-
-			@Override
-			public boolean isLazyChildren() {
-				return false;
-			}
-
-			@Override
-			public boolean isExpanded() {
-				if (node.getType() == NodeType.SCHEMA || node.getType() == NodeType.DATABASE) {
-					return true;
-				} else {
-					return false;
-				}
-			}
-		});
 
 		ToolbarButtonGroup group = application.addApplicationButtonGroup(new ToolbarButtonGroup());
 		group.addButton(ToolbarButton.create(MaterialIcon.CHROME_READER_MODE, "Schema overview", "Display overview of schema")).onClick.addListener(this::showTreeGraph);

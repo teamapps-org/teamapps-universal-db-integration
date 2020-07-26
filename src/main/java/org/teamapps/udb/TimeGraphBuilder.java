@@ -29,6 +29,7 @@ import org.teamapps.ux.component.field.combobox.ComboBox;
 import org.teamapps.ux.component.table.Table;
 import org.teamapps.ux.component.template.BaseTemplate;
 import org.teamapps.ux.component.timegraph.*;
+import org.teamapps.ux.model.ListTreeModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,8 +99,9 @@ public class TimeGraphBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBui
 
 		if (dateFields.size() > 1) {
 			ComboBox<Field<ENTITY, ?>> fieldSelectorComboBox = new ComboBox<>(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
+			ListTreeModel<Field<ENTITY, ?>> comboBoxModel = new ListTreeModel<>(dateFields);
+			fieldSelectorComboBox.setModel(comboBoxModel);
 			fieldSelectorComboBox.setValue(dateFields.get(0));
-			fieldSelectorComboBox.setStaticData(dateFields);
 			fieldSelectorComboBox.setPropertyExtractor((field, propertyName) -> {
 				switch (propertyName) {
 					case BaseTemplate.PROPERTY_ICON:

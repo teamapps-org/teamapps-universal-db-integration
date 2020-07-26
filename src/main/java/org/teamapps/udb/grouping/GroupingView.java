@@ -136,10 +136,10 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 
 
 		ListTreeModel<GroupingNode> treeModel = new ListTreeModel<>(createNodes());
+		treeModel.setTreeNodeInfoFunction(node -> new TreeNodeInfoImpl<>(node.getParentNode(), false));
 		filterSelectionTree = new Tree<>(treeModel);
 		filterSelectionTree.setShowExpanders(false);
 		filterSelectionTree.setOpenOnSelection(true);
-		filterSelectionTree.setTreeNodeInfoExtractor(groupingNode -> new TreeNodeInfoImpl<>(groupingNode.getParentNode(), false));
 		filterSelectionTree.setEntryTemplate(BaseTemplate.LIST_ITEM_MEDIUM_ICON_SINGLE_LINE);
 		filterSelectionTree.setPropertyExtractor((node, s) -> {
 			switch (s) {
