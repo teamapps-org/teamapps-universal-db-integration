@@ -94,14 +94,14 @@ public class TimeGraphModelBuilder<ENTITY extends Entity<ENTITY>> extends Abstra
 	}
 
 	private void updateBaseData() {
-		BitSet recordSet = getModelBuilderFactory().getBaseQuery().executeToBitSet();
+		BitSet recordSet = getModelBuilderFactory().getBaseBitSet();
 		long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 		timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.BASE_DATA_SERIES, timestamps);
 	}
 
 	private void updateGeoFilterData() {
 		if (getModelBuilderFactory().getGeoFilter() != null) {
-			BitSet recordSet = getModelBuilderFactory().getGeoQuery().executeToBitSet();
+			BitSet recordSet = getModelBuilderFactory().getGeoBitSet();
 			long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 			timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.GEO_FILTER_SERIES, timestamps);
 		}
@@ -109,7 +109,7 @@ public class TimeGraphModelBuilder<ENTITY extends Entity<ENTITY>> extends Abstra
 
 	private void updateGroupFilterData() {
 		if (getModelBuilderFactory().getGroupFilter() != null) {
-			BitSet recordSet = getModelBuilderFactory().getGroupingQuery().executeToBitSet();
+			BitSet recordSet = getModelBuilderFactory().getGroupingBitSet();
 			long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 			timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.GROUP_FILTER_SERIES, timestamps);
 		}
@@ -117,7 +117,7 @@ public class TimeGraphModelBuilder<ENTITY extends Entity<ENTITY>> extends Abstra
 
 	private void updateFullTextFilterData() {
 		if (getModelBuilderFactory().getFullTextQuery() != null && !getModelBuilderFactory().getFullTextQuery().isBlank()) {
-			BitSet recordSet = getModelBuilderFactory().getFinalQuery().executeToBitSet();
+			BitSet recordSet = getModelBuilderFactory().getFinalBitSet();
 			long[] timestamps = queryTimestamps(recordSet, queryFieldName);
 			timeGraphModel.setEventTimestampsForDataSeriesId(TimeGraphBuilder.FULL_TEXT_DATA_SERIES, timestamps);
 		}

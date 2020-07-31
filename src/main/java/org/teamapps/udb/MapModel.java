@@ -65,7 +65,7 @@ public class MapModel<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENT
 			lonDouble = (DoubleIndex) longitudeIndex;
 		}
 
-		List<ENTITY> entities = getModelBuilderFactory().getTimeQuery().execute();
+		List<ENTITY> entities = getModelBuilderFactory().getEntities(getModelBuilderFactory().getTimeBitSet());
 		for (ENTITY entity : entities) {
 			int id = entity.getId();
 			Location location = null;
@@ -73,7 +73,6 @@ public class MapModel<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENT
 				location = new Location(latFloat.getValue(id), lonFloat.getValue(id));
 			} else {
 				location = new Location(latDouble.getValue(id), lonDouble.getValue(id));
-
 			}
 			if (location.getLatitude() != 0) {
 				markers.add(new Marker<>(location, null, entity, markerOffsetX, markerOffsetY));

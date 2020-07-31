@@ -19,12 +19,14 @@
  */
 package org.teamapps.udb;
 
+import org.teamapps.data.value.SortDirection;
 import org.teamapps.data.value.Sorting;
 import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.ux.component.table.AbstractTableModel;
 import org.teamapps.ux.component.table.TableModel;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class TableModelBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY>{
 
@@ -34,6 +36,8 @@ public class TableModelBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBu
 
 	public TableModel<ENTITY> createTableModel() {
 		AbstractTableModel<ENTITY> tableModel = new AbstractTableModel<ENTITY>() {
+			private List<ENTITY> entities;
+			private Sorting lastSorting;
 			@Override
 			public int getCount() {
 				return getModelBuilderFactory().getRecordCount().get();
@@ -41,7 +45,16 @@ public class TableModelBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBu
 
 			@Override
 			public List<ENTITY> getRecords(int startIndex, int length, Sorting sorting) {
-				return getModelBuilderFactory().getFinalQuery().execute(startIndex, length, getModelBuilderFactory().convertSorting(sorting));
+				if (entities != null || sorting != lastSorting) {
+					if (sorting == null || sorting.getFieldName() == null) {
+						entities = getModelBuilderFactory().getEntities(getModelBuilderFactory().getFinalBitSet());
+					} else {
+						org.teamapps.universaldb.query.Sorting convertedSorting = getModelBuilderFactory().convertSorting(sorting);
+						entities = getModelBuilderFactory().getFinalQuery().execute(sorting.getFieldName(), sorting.getSorting() == SortDirection.ASC);
+					}
+					lastSorting = sorting;
+				}
+				return entities.stream().skip(startIndex).limit(length).collect(Collectors.toList());
 			}
 		};
 		getModelBuilderFactory().onFinalDataChanged.addListener(() -> tableModel.onAllDataChanged.fire());

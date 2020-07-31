@@ -46,6 +46,7 @@ import org.teamapps.ux.session.SessionContext;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -78,6 +79,12 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 	private AbstractUdbQuery<ENTITY> groupingQuery;
 	private AbstractUdbQuery<ENTITY> finalQuery;
 
+	private BitSet baseBitSet;
+	private BitSet timeBitSet;
+	private BitSet geoBitSet;
+	private BitSet groupingBitSet;
+	private BitSet finalBitSet;
+
 	private TimeIntervalFilter timeIntervalFilter;
 	private Filter geoFilter;
 	private Filter groupFilter;
@@ -104,6 +111,7 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 	public void setBaseQuery(Supplier<Query<ENTITY>> querySupplier) {
 		this.querySupplier = querySupplier;
 		baseQuery = (AbstractUdbQuery<ENTITY>) querySupplier.get();
+		baseBitSet = null;
 		updateTimeFilterQuery(timeIntervalFilter);
 		onBaseQueryDataChanged.fire();
 	}
@@ -148,6 +156,7 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		this.timeIntervalFilter = timeIntervalFilter;
 		AbstractUdbQuery<ENTITY> query = createTimeIntervalQuery();
 		timeQuery = query;
+		timeBitSet = null;
 		updateGeoFilterQuery(geoFilter);
 		onTimeDataChanged.fire();
 	}
@@ -156,6 +165,7 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		this.geoFilter = geoFilter;
 		AbstractUdbQuery<ENTITY> query = createGeoFiltersQuery();
 		geoQuery = query;
+		geoBitSet = null;
 		updateGroupingFilterQuery(groupFilter);
 		onGeoDataChanged.fire();
 	}
@@ -164,6 +174,7 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		this.groupFilter = filter;
 		AbstractUdbQuery<ENTITY> query = createGroupingFiltersQuery();
 		groupingQuery = query;
+		groupingBitSet = null;
 		updateAllFiltersAppliedQuery(fullTextQuery);
 		onGroupingDataChanged.fire();
 	}
@@ -175,7 +186,8 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 			query.addFullTextQuery(fullTextQuery);
 		}
 		finalQuery = query;
-		recordCount.set(finalQuery.executeToBitSet().cardinality());
+		finalBitSet = finalQuery.executeToBitSet();
+		recordCount.set(finalBitSet.cardinality());
 		onFinalDataChanged.fire();
 	}
 
@@ -260,6 +272,41 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		return new PerspectiveBuilder<>(this, entityBuilder, deciderSet);
 	}
 
+	public BitSet getBaseBitSet() {
+		if (baseBitSet == null) {
+			baseBitSet = baseQuery.executeToBitSet();
+		}
+		return baseBitSet;
+	}
+
+	public BitSet getTimeBitSet() {
+		if (timeBitSet == null) {
+			timeBitSet = timeQuery.executeToBitSet();
+		}
+		return timeBitSet;
+	}
+
+	public BitSet getGeoBitSet() {
+		if (geoBitSet == null) {
+			geoBitSet = geoQuery.executeToBitSet();
+		}
+		return geoBitSet;
+	}
+
+	public BitSet getGroupingBitSet() {
+		if (groupingBitSet == null) {
+			groupingBitSet = groupingQuery.executeToBitSet();
+		}
+		return groupingBitSet;
+	}
+
+	public BitSet getFinalBitSet() {
+		if (finalBitSet == null) {
+			finalBitSet = finalQuery.executeToBitSet();
+		}
+		return finalBitSet;
+	}
+
 	public AbstractUdbQuery<ENTITY> getBaseQuery() {
 		return baseQuery;
 	}
@@ -314,6 +361,14 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 
 	public String getCountAsString(long count) {
 		return numberFormat.format(count);
+	}
+
+	public List<ENTITY> getEntities(BitSet recordSet) {
+		List<ENTITY> entities = new ArrayList<>();
+		for (int id = recordSet.nextSetBit(0); id >= 0; id = recordSet.nextSetBit(id + 1)) {
+			entities.add(entityBuilder.build(id));
+		}
+		return entities;
 	}
 
 	protected org.teamapps.universaldb.query.Sorting convertSorting(Sorting sorting) {

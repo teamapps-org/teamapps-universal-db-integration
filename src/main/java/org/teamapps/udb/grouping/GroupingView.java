@@ -265,7 +265,7 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 		currentNode = node;
 		ColumnIndex index = node.getIndex();
 		GroupingNodeType type = node.getNodeType();
-		BitSet records = getModelBuilderFactory().getGeoQuery().executeToBitSet();
+		BitSet records = getModelBuilderFactory().getGeoBitSet();
 
 		if (type == null || type == GroupingNodeType.BY_VALUE || type == GroupingNodeType.TEXT_TERM) {
 			List<String> values = new ArrayList<>();
