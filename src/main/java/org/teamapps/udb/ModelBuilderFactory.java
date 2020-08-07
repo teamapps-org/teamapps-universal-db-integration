@@ -48,6 +48,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
@@ -90,6 +91,8 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 	private Filter groupFilter;
 	private String fullTextQuery;
 
+	private Function<String, Query<ENTITY>> customFulltextQueryProvider;
+
 	private List<Field<ENTITY, ?>> fields = new ArrayList<>();
 
 	private NumberFormat numberFormat = NumberFormat.getInstance(SessionContext.current().getLocale());
@@ -114,6 +117,10 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		baseBitSet = null;
 		updateTimeFilterQuery(timeIntervalFilter);
 		onBaseQueryDataChanged.fire();
+	}
+
+	public void setCustomFulltextQueryProvider(Function<String, Query<ENTITY>> customFulltextQueryProvider) {
+		this.customFulltextQueryProvider = customFulltextQueryProvider;
 	}
 
 	public ModelBuilderFactory<ENTITY> addAllEntityFields() {
@@ -183,8 +190,14 @@ public class ModelBuilderFactory<ENTITY extends Entity<ENTITY>> {
 		this.fullTextQuery = fullTextQuery;
 		AbstractUdbQuery<ENTITY> query = createGroupingFiltersQuery();
 		if (fullTextQuery != null && !fullTextQuery.isBlank()) {
-			query.addFullTextQuery(fullTextQuery);
+			if (customFulltextQueryProvider != null) {
+				AbstractUdbQuery<ENTITY> fulltextQuery = (AbstractUdbQuery<ENTITY>) customFulltextQueryProvider.apply(fullTextQuery);
+				query.and(fulltextQuery);
+			} else {
+				query.addFullTextQuery(fullTextQuery);
+			}
 		}
+
 		finalQuery = query;
 		finalBitSet = finalQuery.executeToBitSet();
 		recordCount.set(finalBitSet.cardinality());
