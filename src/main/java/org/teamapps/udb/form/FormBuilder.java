@@ -136,7 +136,6 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 			}
 		});
 
-
 	}
 
 	public void createAndAttachToViewWithToolbarButtons(View view) {

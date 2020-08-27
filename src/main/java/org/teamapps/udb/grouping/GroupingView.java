@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,10 +19,8 @@
  */
 package org.teamapps.udb.grouping;
 
-import org.teamapps.icons.api.Icon;
 import org.teamapps.udb.AbstractBuilder;
 import org.teamapps.udb.Field;
-import org.teamapps.udb.FieldInfo;
 import org.teamapps.udb.ModelBuilderFactory;
 import org.teamapps.udb.filter.*;
 import org.teamapps.universaldb.index.ColumnIndex;
@@ -58,7 +56,10 @@ import org.teamapps.ux.model.ListTreeModel;
 import org.teamapps.ux.session.SessionContext;
 
 import java.text.NumberFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENTITY> {
@@ -96,7 +97,7 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 				case BaseTemplate.PROPERTY_CAPTION:
 					return groupFilter.getCaption();
 				case BaseTemplate.PROPERTY_ICON:
-					return getIcon(TeamAppsIconBundle.FILTER.getKey()) ;
+					return getIcon(TeamAppsIconBundle.FILTER.getKey());
 			}
 			return null;
 		});
