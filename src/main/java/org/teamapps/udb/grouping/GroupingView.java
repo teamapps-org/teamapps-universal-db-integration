@@ -88,7 +88,7 @@ public class GroupingView<ENTITY extends Entity<ENTITY>> extends AbstractBuilder
 		verticalLayout.addComponent(toolbar);
 
 		filtersTagComboBox = new TagComboBox<>();
-		filtersTagComboBox.setShowDropDownButton(false);
+		filtersTagComboBox.setDropDownButtonVisible(false);
 		filtersTagComboBox.setWrappingMode(TagBoxWrappingMode.SINGLE_TAG_PER_LINE);
 		filtersTagComboBox.setShowClearButton(true);
 		filtersTagComboBox.setTemplate(BaseTemplate.LIST_ITEM_SMALL_ICON_SINGLE_LINE);
