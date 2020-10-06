@@ -32,7 +32,7 @@ Current UniversalDB version: [![Maven Central](https://maven-badges.herokuapp.co
 <dependency>
     <groupId>org.teamapps</groupId>
     <artifactId>teamapps-server-jetty-embedded</artifactId>
-    <version>0.9.68</version>
+    <version>0.9.75</version>
 </dependency>
 ```
 
