@@ -16,7 +16,7 @@ Current UniversalDB version: [![Maven Central](https://maven-badges.herokuapp.co
 <dependency>
   <groupId>org.teamapps</groupId>
   <artifactId>teamapps-universal-db-integration</artifactId>
-  <version>0.5</version>
+  <version>0.7</version>
 </dependency>
 ```
 
@@ -26,13 +26,13 @@ Current UniversalDB version: [![Maven Central](https://maven-badges.herokuapp.co
 <dependency>
     <groupId>org.teamapps</groupId>
     <artifactId>universal-db</artifactId>
-    <version>0.4.11</version>
+    <version>0.4.12</version>
 </dependency>
 
 <dependency>
     <groupId>org.teamapps</groupId>
     <artifactId>teamapps-server-jetty-embedded</artifactId>
-    <version>0.9.75</version>
+    <version>0.9.78</version>
 </dependency>
 ```
 

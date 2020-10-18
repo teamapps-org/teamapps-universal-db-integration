@@ -129,7 +129,7 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 		displayedEntity.onChanged().addListener(entity -> {
 			setFormValues(entity);
 			deleteButton.setVisible(deciderSet.getDeletionDecider().allowDeletion(entity));
-			if (!entity.exists()) {
+			if (!entity.isStored()) {
 				saveButton.setVisible(deciderSet.isAllowCreation());
 			} else {
 				saveButton.setVisible(deciderSet.getModificationDecider().allowModification(entity));
