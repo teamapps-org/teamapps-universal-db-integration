@@ -20,7 +20,7 @@
 package org.teamapps.udb.grouping;
 
 
-import org.teamapps.icons.api.Icon;
+import org.teamapps.icons.Icon;
 import org.teamapps.universaldb.index.ColumnIndex;
 import org.teamapps.universaldb.index.ColumnType;
 import org.teamapps.ux.i18n.TeamAppsDictionary;

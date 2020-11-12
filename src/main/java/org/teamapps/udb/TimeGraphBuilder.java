@@ -20,6 +20,7 @@
 package org.teamapps.udb;
 
 import org.teamapps.common.format.Color;
+import org.teamapps.common.format.RgbaColor;
 import org.teamapps.event.Event;
 import org.teamapps.udb.filter.TimeIntervalFilter;
 import org.teamapps.universaldb.index.ColumnType;
@@ -62,7 +63,7 @@ public class TimeGraphBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBui
 		fullTextFilterLine = createChartLine(FULL_TEXT_DATA_SERIES, Color.MATERIAL_AMBER_700);
 	}
 
-	public LineChartLine createChartLine(String lineName, Color color) {
+	public LineChartLine createChartLine(String lineName, RgbaColor color) {
 		LineChartLine line = new LineChartLine(lineName, LineChartCurveType.MONOTONE, 0.5f, color, color.withAlpha(0.05f));
 		line.setAreaColorScaleMin(color.withAlpha(0.05f));
 		line.setAreaColorScaleMax(color.withAlpha(0.5f));

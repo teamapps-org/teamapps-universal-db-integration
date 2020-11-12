@@ -19,7 +19,7 @@
  */
 package org.teamapps.udb;
 
-import org.teamapps.icons.api.Icon;
+import org.teamapps.icons.Icon;
 import org.teamapps.universaldb.index.ColumnIndex;
 import org.teamapps.universaldb.pojo.Entity;
 import org.teamapps.ux.session.SessionContext;

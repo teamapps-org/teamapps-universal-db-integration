@@ -24,7 +24,7 @@ import org.teamapps.server.jetty.embedded.TeamAppsJettyEmbeddedServer;
 import org.teamapps.ux.component.Component;
 import org.teamapps.ux.component.flexcontainer.VerticalLayout;
 import org.teamapps.ux.component.login.LoginWindow;
-import org.teamapps.webcontroller.SimpleWebController;
+import org.teamapps.webcontroller.WebController;
 
 import java.io.File;
 import java.util.function.Supplier;
@@ -35,15 +35,16 @@ public class WebServer {
 	private File webAppPath;
 	private AccessController accessController;
 	private Supplier<Component> componentSupplier;
-	private final SimpleWebController webController;
+	private final WebController webController;
 
 	public WebServer() {
-		webAppPath = Files.createTempDir();
-		webController = new SimpleWebController(c -> componentSupplier.get());
-		webController.setShowBackgroundImage(true);
+		webController = c -> {
+			c.addRootPanel().setContent(componentSupplier.get());
+		};
+		// webController.setShowBackgroundImage(true);
 	}
 
-	public SimpleWebController getWebController() {
+	public WebController getWebController() {
 		return webController;
 	}
 
