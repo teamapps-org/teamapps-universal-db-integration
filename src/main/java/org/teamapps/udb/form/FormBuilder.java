@@ -23,7 +23,7 @@ import org.teamapps.data.extract.BeanPropertyExtractor;
 import org.teamapps.data.extract.ValueExtractor;
 import org.teamapps.data.extract.ValueInjector;
 import org.teamapps.databinding.TwoWayBindableValue;
-import org.teamapps.icons.api.Icon;
+import org.teamapps.icons.Icon;
 import org.teamapps.udb.AbstractBuilder;
 import org.teamapps.udb.Field;
 import org.teamapps.udb.ModelBuilderFactory;
@@ -42,10 +42,9 @@ import org.teamapps.universaldb.record.EntityBuilder;
 import org.teamapps.ux.application.view.View;
 import org.teamapps.ux.component.dialogue.Dialogue;
 import org.teamapps.ux.component.field.*;
-import org.teamapps.ux.component.field.datetime.InstantDateField;
 import org.teamapps.ux.component.field.datetime.InstantDateTimeField;
-import org.teamapps.ux.component.field.datetime.InstantTimeField;
 import org.teamapps.ux.component.field.datetime.LocalDateField;
+import org.teamapps.ux.component.field.datetime.LocalTimeField;
 import org.teamapps.ux.component.form.ResponsiveForm;
 import org.teamapps.ux.component.form.ResponsiveFormLayout;
 import org.teamapps.ux.component.form.ResponsiveFormSection;
@@ -55,6 +54,9 @@ import org.teamapps.ux.i18n.TeamAppsDictionary;
 import org.teamapps.ux.icon.TeamAppsIconBundle;
 import org.teamapps.ux.session.SessionContext;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -157,18 +159,33 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 		for (Field<ENTITY, ?> formField : getFields()) {
 			if (formField.getIndex() != null && formField.getField() != null) {
 				ColumnIndex index = formField.getIndex();
-				if (index.getColumnType() == ColumnType.TRANSLATABLE_TEXT) {
-					AbstractUdbEntity<ENTITY> entity = (AbstractUdbEntity<ENTITY>) record;
-					TextField translatableTextField = (TextField) formField.getField();
-					TranslatableText translatableTextValue = entity.getTranslatableTextValue((TranslatableTextIndex) index);
-					if (translatableTextValue == null) {
-						translatableTextField.setValue(null);
-					} else {
-						translatableTextField.setValue(translatableTextValue.getText(SessionContext.current().getLocale().getLanguage()));
+				switch (index.getColumnType()) {
+					case TRANSLATABLE_TEXT:
+						AbstractUdbEntity<ENTITY> entity = (AbstractUdbEntity<ENTITY>) record;
+						TextField translatableTextField = (TextField) formField.getField();
+						TranslatableText translatableTextValue = entity.getTranslatableTextValue((TranslatableTextIndex) index);
+						if (translatableTextValue == null) {
+							translatableTextField.setValue(null);
+						} else {
+							translatableTextField.setValue(translatableTextValue.getText(SessionContext.current().getLocale().getLanguage()));
+						}
+						break;
+					case TIME: {
+						LocalTimeField field = (LocalTimeField) formField.getField();
+						Instant value = (Instant) beanPropertyExtractor.getValue(record, index.getName());
+						field.setValue(value.atOffset(ZoneOffset.UTC).toLocalTime());
+						break;
 					}
-				} else {
-					AbstractField<Object> field = (AbstractField<Object>) formField.getField();
-					field.setValue(beanPropertyExtractor.getValue(record, index.getName()));
+					case DATE: {
+						LocalDateField field = (LocalDateField) formField.getField();
+						Instant value = (Instant) beanPropertyExtractor.getValue(record, index.getName());
+						field.setValue(value.atOffset(ZoneOffset.UTC).toLocalDate());
+						break;
+					}
+					default:
+						AbstractField<Object> field = (AbstractField<Object>) formField.getField();
+						field.setValue(beanPropertyExtractor.getValue(record, index.getName()));
+						break;
 				}
 			} else if (formField.getValueExtractor() != null) {
 				ValueExtractor<ENTITY> valueExtractor = formField.getValueExtractor();
@@ -242,12 +259,12 @@ public class FormBuilder<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<
 						entity.setTimestampValue(timestampField.getValue(), (IntegerIndex) index);
 						break;
 					case DATE:
-						InstantDateField dateField = (InstantDateField) formField.getField();
-						entity.setDateValue(dateField.getValue(), (LongIndex) index);
+						LocalDateField dateField = (LocalDateField) formField.getField();
+						entity.setDateValue(dateField.getValue().atStartOfDay().atZone(ZoneOffset.UTC).toInstant(), (LongIndex) index);
 						break;
 					case TIME:
-						InstantTimeField timeField = (InstantTimeField) formField.getField();
-						entity.setTimeValue(timeField.getValue(), (IntegerIndex) index);
+						LocalTimeField timeField = (LocalTimeField) formField.getField();
+						entity.setTimeValue(timeField.getValue().atDate(LocalDate.of(1970,1,1)).atZone(ZoneOffset.UTC).toInstant(), (IntegerIndex) index);
 						break;
 					case DATE_TIME:
 						InstantDateTimeField dateTimeField = (InstantDateTimeField) formField.getField();

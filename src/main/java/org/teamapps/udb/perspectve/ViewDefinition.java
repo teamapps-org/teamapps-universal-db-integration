@@ -20,7 +20,7 @@
 package org.teamapps.udb.perspectve;
 
 import org.teamapps.data.extract.PropertyExtractor;
-import org.teamapps.icons.api.Icon;
+import org.teamapps.icons.Icon;
 import org.teamapps.udb.Field;
 import org.teamapps.udb.ModelBuilderFactory;
 import org.teamapps.universaldb.index.ColumnIndex;

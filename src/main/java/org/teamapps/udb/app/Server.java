@@ -22,7 +22,7 @@ package org.teamapps.udb.app;
 import org.teamapps.universaldb.UniversalDB;
 import org.teamapps.universaldb.schema.SchemaInfoProvider;
 import org.teamapps.ux.component.Component;
-import org.teamapps.webcontroller.SimpleWebController;
+import org.teamapps.webcontroller.WebController;
 
 import java.io.File;
 import java.util.function.Supplier;
@@ -43,7 +43,7 @@ public class Server {
 		webServer = new WebServer();
 	}
 
-	public SimpleWebController getWebController() {
+	public WebController getWebController() {
 		return webServer.getWebController();
 	}
 

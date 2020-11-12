@@ -21,7 +21,7 @@ package org.teamapps.udb.perspectve;
 
 import org.teamapps.data.extract.PropertyExtractor;
 import org.teamapps.icon.material.MaterialIcon;
-import org.teamapps.icons.api.Icon;
+import org.teamapps.icons.Icon;
 import org.teamapps.udb.*;
 import org.teamapps.udb.decider.DeciderSet;
 import org.teamapps.udb.form.FormBuilder;

@@ -21,7 +21,7 @@ package org.teamapps.udb;
 
 import org.teamapps.data.extract.ValueExtractor;
 import org.teamapps.data.extract.ValueInjector;
-import org.teamapps.icons.api.Icon;
+import org.teamapps.icons.Icon;
 import org.teamapps.udb.explorer.Util;
 import org.teamapps.universaldb.index.ColumnIndex;
 import org.teamapps.universaldb.index.ColumnType;
@@ -36,10 +36,9 @@ import org.teamapps.universaldb.pojo.EntityArrayList;
 import org.teamapps.universaldb.schema.Column;
 import org.teamapps.ux.component.field.*;
 import org.teamapps.ux.component.field.combobox.ComboBox;
-import org.teamapps.ux.component.field.datetime.InstantDateField;
 import org.teamapps.ux.component.field.datetime.InstantDateTimeField;
-import org.teamapps.ux.component.field.datetime.InstantTimeField;
 import org.teamapps.ux.component.field.datetime.LocalDateField;
+import org.teamapps.ux.component.field.datetime.LocalTimeField;
 import org.teamapps.ux.component.template.BaseTemplate;
 import org.teamapps.ux.icon.TeamAppsIconBundle;
 
@@ -283,10 +282,10 @@ public class Field<ENTITY extends Entity<ENTITY>, VALUE> {
 				field = new InstantDateTimeField();
 				break;
 			case DATE:
-				field = new InstantDateField();
+				field = new LocalDateField();
 				break;
 			case TIME:
-				field = new InstantTimeField();
+				field = new LocalTimeField();
 				break;
 			case LOCAL_DATE:
 				field = new LocalDateField();

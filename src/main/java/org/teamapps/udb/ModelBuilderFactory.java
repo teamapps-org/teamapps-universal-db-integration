@@ -24,7 +24,7 @@ import org.teamapps.data.value.Sorting;
 import org.teamapps.databinding.ObservableValue;
 import org.teamapps.databinding.TwoWayBindableValue;
 import org.teamapps.event.Event;
-import org.teamapps.icons.api.Icon;
+import org.teamapps.icons.Icon;
 import org.teamapps.udb.decider.DeciderSet;
 import org.teamapps.udb.explorer.Util;
 import org.teamapps.udb.filter.*;
