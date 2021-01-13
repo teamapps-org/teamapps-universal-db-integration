@@ -75,7 +75,7 @@ public class MapModel<ENTITY extends Entity<ENTITY>> extends AbstractBuilder<ENT
 				location = new Location(latDouble.getValue(id), lonDouble.getValue(id));
 			}
 			if (location.getLatitude() != 0) {
-				markers.add(new Marker<>(location, null, entity, markerOffsetX, markerOffsetY));
+				markers.add(new Marker<>(location, entity, markerOffsetX, markerOffsetY));
 			}
 		}
 		return markers;
