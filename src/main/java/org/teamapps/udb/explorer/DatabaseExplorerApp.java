@@ -2,7 +2,7 @@
  * ========================LICENSE_START=================================
  * TeamApps.org UniversalDB Integration
  * ---
- * Copyright (C) 2020 TeamApps.org
+ * Copyright (C) 2020 - 2021 TeamApps.org
  * ---
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,8 @@ import org.teamapps.universaldb.index.reference.single.SingleReferenceIndex;
 import org.teamapps.universaldb.pojo.AbstractUdbEntity;
 import org.teamapps.universaldb.pojo.AbstractUdbQuery;
 import org.teamapps.universaldb.pojo.Entity;
+import org.teamapps.universaldb.record.EntityBuilder;
+import org.teamapps.universaldb.transaction.Transaction;
 import org.teamapps.ux.application.ResponsiveApplication;
 import org.teamapps.ux.application.layout.StandardLayout;
 import org.teamapps.ux.application.perspective.Perspective;
@@ -197,13 +199,11 @@ public class DatabaseExplorerApp {
 
 		leftBottomView.setSize(ViewSize.ofAbsoluteWidth(250));
 
-		String pojoNamespace = tableIndex.getDatabaseIndex().getSchemaIndex().getSchema().getPojoNamespace();
-		String path = pojoNamespace + "." + tableIndex.getDatabaseIndex().getName() + ".Udb" + Util.getFirstUpper(tableIndex.getName());
-		ModelBuilderFactory factory = new ModelBuilderFactory(() -> createQuery(path));
+		ModelBuilderFactory factory = new ModelBuilderFactory(() -> createQuery(tableIndex));
 		factory.addAllEntityFields();
 		factory.createTableBuilder().createAndAttachToViewWithHeaderField(centerView);
 
-		AbstractUdbEntity entity = createEntity(path);
+		AbstractUdbEntity entity = createEntity(tableIndex);
 		FormBuilder formBuilder = factory.createFormBuilder(entity, deciderSetByEntityFunction.apply(entity));
 		formBuilder.createAndAttachToViewWithToolbarButtons(rightView);
 		rightView.setVisible(true);
@@ -218,18 +218,20 @@ public class DatabaseExplorerApp {
 		application.showPerspective(perspective);
 	}
 
-	private AbstractUdbQuery createQuery(String path) {
+	private AbstractUdbQuery createQuery(TableIndex tableIndex) {
 		try {
-			return (AbstractUdbQuery) Class.forName(path + "Query").getDeclaredConstructor().newInstance();
+			Class queryClass = universalDB.getQueryClass(tableIndex);
+			return (AbstractUdbQuery) queryClass.getDeclaredConstructor().newInstance();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return null;
 	}
 
-	private AbstractUdbEntity createEntity(String path) {
+	private AbstractUdbEntity createEntity(TableIndex tableIndex) {
 		try {
-			return (AbstractUdbEntity) Class.forName(path).getDeclaredConstructor().newInstance();
+			Class entityClass = universalDB.getEntityClass(tableIndex);
+			return (AbstractUdbEntity) entityClass.getDeclaredConstructor().newInstance();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -260,11 +262,13 @@ public class DatabaseExplorerApp {
 				links.add(new ForceLayoutLink(dbGraphNode, tableGraphNode));
 				graphNodeById.put(tableNode.getTableIndex().getFQN(), tableGraphNode);
 				for (ColumnIndex columnIndex : table.getColumnIndices()) {
-					Node columnNode = new Node(columnIndex.getName(), NodeType.COLUMN, columnIndex, tableNode);
-					ForceLayoutNode<Node> columnGraphNode = createForceLayoutNode(columnNode);
-					nodes.add(columnGraphNode);
-					links.add(new ForceLayoutLink(tableGraphNode, columnGraphNode));
-					graphNodeById.put(columnNode.getColumnIndex().getFQN(), columnGraphNode);
+					if (columnIndex.getColumnType().isReference()) {
+						Node columnNode = new Node(columnIndex.getName(), NodeType.COLUMN, columnIndex, tableNode);
+						ForceLayoutNode<Node> columnGraphNode = createForceLayoutNode(columnNode);
+						nodes.add(columnGraphNode);
+						links.add(new ForceLayoutLink(tableGraphNode, columnGraphNode));
+						graphNodeById.put(columnNode.getColumnIndex().getFQN(), columnGraphNode);
+					}
 				}
 			}
 		}
@@ -274,19 +278,19 @@ public class DatabaseExplorerApp {
 				.flatMap(table -> table.getColumnIndices().stream())
 				.filter(column -> column.getColumnType().isReference())
 				.forEach(column -> {
-					if (column.getColumnType().isReference()) {
-						TableIndex referencedTable = null;
-						if (column.getColumnType() == ColumnType.SINGLE_REFERENCE) {
-							SingleReferenceIndex singleReferenceIndex = (SingleReferenceIndex) column;
-							referencedTable = singleReferenceIndex.getReferencedTable();
-						} else {
-							MultiReferenceIndex multiReferenceIndex = (MultiReferenceIndex) column;
-							referencedTable = multiReferenceIndex.getReferencedTable();
-						}
-						ForceLayoutNode<Node> node1 = graphNodeById.get(column.getFQN());
-						ForceLayoutNode<Node> node2 = graphNodeById.get(referencedTable.getFQN());
-						links.add(new ForceLayoutLink(node1, node2));
-					}
+//					if (column.getColumnType().isReference()) {
+//						TableIndex referencedTable = null;
+//						if (column.getColumnType() == ColumnType.SINGLE_REFERENCE) {
+//							SingleReferenceIndex singleReferenceIndex = (SingleReferenceIndex) column;
+//							referencedTable = singleReferenceIndex.getReferencedTable();
+//						} else {
+//							MultiReferenceIndex multiReferenceIndex = (MultiReferenceIndex) column;
+//							referencedTable = multiReferenceIndex.getReferencedTable();
+//						}
+//						ForceLayoutNode<Node> node1 = graphNodeById.get(column.getFQN());
+//						ForceLayoutNode<Node> node2 = graphNodeById.get(referencedTable.getFQN());
+//						links.add(new ForceLayoutLink(node1, node2));
+//					}
 					ColumnIndex referencedColumn = column.getReferencedColumn();
 					if (referencedColumn != null) {
 						ForceLayoutNode<Node> node1 = graphNodeById.get(column.getFQN());
