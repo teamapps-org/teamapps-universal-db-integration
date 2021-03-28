@@ -33,8 +33,8 @@
         <maven-assembly-plugin-version>3.0.0</maven-assembly-plugin-version>
         <slf4j-version>1.7.25</slf4j-version>
         <junit.version>4.13</junit.version>
-        <teamapps-version>0.9.95</teamapps-version>
-        <universal-db-version>0.4.20-SNAPSHOT</universal-db-version>
+        <teamapps-version>0.9.98</teamapps-version>
+        <universal-db-version>0.4.20</universal-db-version>
     </properties>
 
     <distributionManagement>
