@@ -94,7 +94,7 @@ public class Node {
 	public String getDescription() {
 		switch (type) {
 			case SCHEMA:
-				return getSchemaIndex().getPath().toString();
+				return getSchemaIndex().getDataPath().toString();
 			case DATABASE:
 				return getDatabaseIndex().getFQN();
 			case TABLE:
